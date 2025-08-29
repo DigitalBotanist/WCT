@@ -21,6 +21,9 @@ npm-debug.log
 yarn-error.log
 .DS_Store
 
+.react-router/
+
+
 # IDE / OS files
 .vscode/
 .idea/
