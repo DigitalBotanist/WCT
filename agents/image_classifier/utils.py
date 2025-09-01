@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 import os 
 
-CLASS_NAMES_FILE_PATH = os.path.join(os.path.dirname(__file__), "../../checkpoints/class_names.json") 
+CLASS_NAMES_FILE_PATH = os.path.join(os.path.dirname(__file__), "./class_names.json") 
 
 def decode_predictions(preds):
 
