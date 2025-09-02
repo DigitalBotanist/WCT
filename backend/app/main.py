@@ -57,10 +57,13 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     
     if field == "email":
         error_message = "Invalid email address"
+    elif field == "password":
+        error_message = "Password must contain at least one number, one symbol, one capital letter, one lower case letter and should be longer than 8 characters"
     else:
+        print(msg)
         error_message = msg
 
-    return JSONResponse(status_code=400, content={"error": error_message})
+    return JSONResponse(status_code=400, content={"detail": {"error": error_message}})
 
 
 @app.post("/signup")

@@ -1,4 +1,10 @@
-import { createContext, useReducer, useContext, type ReactNode } from "react";
+import {
+    createContext,
+    useReducer,
+    useContext,
+    type ReactNode,
+    useEffect,
+} from "react";
 
 interface AuthState {
     user: string | null;
@@ -16,12 +22,17 @@ const initialState: AuthState = { user: null, token: null, loading: false };
 function authReducer(state: AuthState, action: AuthAction): AuthState {
     switch (action.type) {
         case "LOGIN":
+            localStorage.setItem(
+                "user",
+                JSON.stringify(action.payload)
+            );
             return {
                 ...state,
                 user: action.payload.user,
                 token: action.payload.token,
             };
         case "LOGOUT":
+            localStorage.removeItem("user");
             return { ...state, user: null, token: null };
         case "SET_LOADING":
             return { ...state, loading: action.payload };
@@ -37,6 +48,16 @@ const AuthContext = createContext<
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [state, dispatch] = useReducer(authReducer, initialState);
 
+    useEffect(() => {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+            const parsed = JSON.parse(userData);
+            dispatch({
+                type: "LOGIN",
+                payload: { user: parsed.user, token: parsed.token },
+            });
+        }
+    }, []);
     return (
         <AuthContext.Provider value={{ state, dispatch }}>
             {children}
