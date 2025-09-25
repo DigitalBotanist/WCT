@@ -7,11 +7,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 
-from backend.app.database import Base, engine, SessionLocal
-from backend.app.models import User, Base
-from backend.app.jwt_utils import create_access_token, decode_access_token
-from backend.app.security import hash_password, verify_password
-from backend.app.schemas import CreateUser, TokenWithEmail
+from app.database import Base, engine, SessionLocal
+from app.models import User, Base
+from app.jwt_utils import create_access_token, decode_access_token
+from app.security import hash_password, verify_password
+from app.schemas import CreateUser, TokenWithEmail
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,7 +32,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # or ["*"] to allow all
+    allow_origins=origins,      
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
