@@ -13,6 +13,7 @@ from app.models import User, Base
 from app.jwt_utils import create_access_token, decode_access_token, get_current_user
 from app.security import hash_password, verify_password
 from app.schemas import CreateUser, TokenWithEmail
+from app.session_manager import SessionManager, get_session_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -77,7 +78,7 @@ def signup(user: CreateUser, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     # create token 
-    token = create_access_token({"sub": user.email})
+    token = create_access_token({"sub": str(user.id), "email": user.email})
     return TokenWithEmail(access_token=token, token_type="bearer", user=user.email)
 
 @app.post("/login")
@@ -93,7 +94,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         raise HTTPException(status_code=401, detail={"error": "Invalid Credentials"})
     
     # create token
-    token = create_access_token({"sub": user.email})
+    token = create_access_token({"sub": str(user.id), "email": user.email})
     return TokenWithEmail(access_token=token, token_type="bearer", user=user.email)
 
 @app.get("/me")
@@ -109,7 +110,8 @@ def read_me(token: str = Depends(oauth2_scheme)):
 @app.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket, 
-    token: str | None = Query(default=None)
+    token: str | None = Query(default=None), 
+    session_manager: SessionManager = Depends(get_session_manager)
 ):
     await websocket.accept()    # accept the connection 
 
@@ -127,6 +129,7 @@ async def websocket_endpoint(
 
     # check the user 
     user = await get_current_user(token=token)
+    print(user)
     if not user: 
         #send error to the client
         error_message = {
@@ -145,6 +148,25 @@ async def websocket_endpoint(
 
             if data.get("action") == "create_session":
                 print("creating session")
+                await session_manager.create_session(user["sub"], initial_context={
+                    "initial_message": data.get("message", "")
+            })
+
+            if data.get("action") == 'continue_session':
+                session_id = data.get("sessionId")
+
+                if not await session_manager.validate_session(session_id=session_id, user_id=user["sub"]):
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid session"
+                    })
+                    await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                    return
+                else: 
+                    await websocket.send_json({
+                        "type": "session_validated",
+                        "sessionId": f"{session_id}"
+                    }) 
            
     except WebSocketDisconnect:
         print("disconnect")

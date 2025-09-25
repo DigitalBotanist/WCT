@@ -27,7 +27,7 @@ async def get_current_user(token: str):
         username: str = payload.get("sub")
         if username is None:
             return None
-        return username
+        return payload
     except JWTError:
         return None
         

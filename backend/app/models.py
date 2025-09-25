@@ -42,8 +42,8 @@ class ChatSession(Base):
 
 class ConversationMessage(Base):
     __tablename__ = "conversation_messages"
-    
-    id = Column(String, primary_key=True)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)    
     session_id = Column(UUID(as_uuid=True), ForeignKey('chat_sessions.id'), index=True)
     role = Column(String)  # user, assistant, system
     agent_type = Column(String)  # classifier, migration_analyzer, llm_writer, system
