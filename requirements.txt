@@ -1,12 +1,14 @@
-fastapi==0.117.1
+fastapi[standard]==0.117.1
 httpx==0.28.1
 numpy==2.2.6
 passlib==1.7.4
 Pillow==11.3.0
 pydantic==2.11.9
+pydantic[email]==2.11.9
 python-dotenv==1.1.1
 python_jose==3.5.0
 SQLAlchemy==2.0.43
 tensorflow==2.20.0
 keras==3.10.0
 bcrypt==4.3.0
+psycopg2==2.9.10
