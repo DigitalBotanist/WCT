@@ -4,25 +4,19 @@ import { useAuth } from "~/contexts/AuthContext";
 
 interface WebSocketMessage {
     action?: string;
-    type:
-        | "message"
-        | "error"
-        | "progress"
-        | "connection_status"
-        | "sessionId"
-        | "image"
-        | "document";
+    type: "message" | "error" | "progress" | "connection_status" | "sessionId";
     content: string;
     role?: "system" | "user";
     code?: string;
     data?: any;
     sessionId?: string;
+    image?: string;
 }
 
 export const useWebSocket = () => {
     const { userState } = useAuth();
     const [isConnected, setIsConnected] = useState(false);
-    const [sessionId, setSessionId] = useState<null | string>(null);
+    const sessionId = useRef<null | string>(null);
     const [messages, setMessages] = useState<WebSocketMessage[]>([]);
     const ws = useRef<WebSocket | null>(null);
 
@@ -52,7 +46,8 @@ export const useWebSocket = () => {
                 setMessages((prev) => [...prev, data]);
 
                 if (data.type == "sessionId") {
-                    setSessionId(data.content);
+                    console.log("setting session id", data.content)
+                    sessionId.current = data.content
                 }
                 console.log(messages);
             };
@@ -94,17 +89,28 @@ export const useWebSocket = () => {
     const sendMessage = useCallback(
         (
             action: string,
-            type: "message" | "image" | "document",
-            content: string
+            type: "message",
+            content: string,
+            image: string | null
         ) => {
-            const msg: WebSocketMessage = sessionId
-                ? {
-                      action: action,
-                      type: type,
-                      content: content,
-                      role: "user",
-                      sessionId,
-                  }
+            console.log("session id in sendmessage: ", sessionId.current)
+            const msg: WebSocketMessage = sessionId.current
+                ? image
+                    ? {
+                          action: action,
+                          type: type,
+                          content: content,
+                          role: "user",
+                          sessionId: sessionId.current,
+                          image,
+                      }
+                    : {
+                          action: action,
+                          type: type,
+                          content: content,
+                          role: "user",
+                          sessionId: sessionId.current,
+                      }
                 : {
                       action: action,
                       type: type,
@@ -132,6 +138,5 @@ export const useWebSocket = () => {
         disconnect,
         connect,
         sessionId,
-        setSessionId,
     };
 };

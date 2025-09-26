@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useWebSocket } from "~/hooks/useWebSocket";
 
 const ChatWindow = () => {
-    const { session_id } = useParams()
+    const { session_id } = useParams();
     const [message, setMessage] = useState<string>("");
-    const navigate = useNavigate()
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [imageBase64, setImageBase64] = useState<string | null>(null);
+    const navigate = useNavigate();
     const {
         isConnected,
         messages,
@@ -13,53 +15,79 @@ const ChatWindow = () => {
         disconnect,
         connect,
         sessionId,
-        setSessionId
     } = useWebSocket();
 
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if(message == '') {
-            return
+        if (message == "") {
+            return;
         }
-        if (!sessionId){
-            sendMessage("create_session", "message", message);
-            setMessage("")
-            return; 
+        if (!sessionId.current) {
+            sendMessage("create_session", "message", message , imageBase64);
+            setMessage("");
+            return;
         }
 
-        sendMessage("user_request", "message", message);
+        sendMessage("user_request", "message", message, imageBase64);
+    };
+
+    const handleAddClick = () => {
+        fileInputRef.current?.click(); // Triggers the hidden file input
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        console.log("Selected file:", file.name);
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImageBase64(reader.result as string); // base64 string
+        };
+        reader.readAsDataURL(file); // base64 encode
     };
 
     useEffect(() => {
         if (session_id) {
-            setSessionId(sessionId)
+            sessionId.current = session_id;
         }
-
-
-    }, [])
+    }, []);
 
     useEffect(() => {
         connect();
     }, []);
 
     useEffect(() => {
-        if (!sessionId) return; 
-        console.log("session id:", sessionId);
-        navigate(`/chat/${sessionId}`)
-    }, [sessionId]);
+        if (!sessionId.current) return;
+        console.log("session id:", sessionId.current);
+        navigate(`/chat/${sessionId.current}`);
+    }, [sessionId.current]);
 
     return (
         <div className="w-full h-full flex flex-col items-center">
             <div className="flex-1">
                 {messages
-                    .filter((message) => message.type == "message")
+                    // .filter((message) => message.type == "message")
                     .map((message) => (
                         <div>{message.content}</div>
                     ))}
             </div>
             <form className="flex gap-2 w-9/10" onSubmit={handleSend}>
-                <button className="bg-background-600 p-4 rounded-md">
+                {/* Hidden file input */}
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileChange}
+                    accept="image/*,.pdf,.doc,.docx" // customize accepted file types
+                />
+                <button
+                    type="button"
+                    className="bg-background-600 p-4 rounded-md"
+                    onClick={handleAddClick}
+                >
                     Add
                 </button>
                 <input
@@ -79,4 +107,3 @@ const ChatWindow = () => {
 };
 
 export default ChatWindow;
-

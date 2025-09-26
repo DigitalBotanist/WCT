@@ -7,6 +7,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import asyncio
+import base64
+from io import BytesIO
+from PIL import Image
 
 from app.database import Base, engine, SessionLocal, get_db
 from app.models import User, Base
@@ -14,6 +17,8 @@ from app.jwt_utils import create_access_token, decode_access_token, get_current_
 from app.security import hash_password, verify_password
 from app.schemas import CreateUser, TokenWithEmail
 from app.session_manager import SessionManager, get_session_manager
+from app.utils import save_base64_image
+from app.orchestrator import Orchestrator
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -111,7 +116,8 @@ def read_me(token: str = Depends(oauth2_scheme)):
 async def websocket_endpoint(
     websocket: WebSocket, 
     token: str | None = Query(default=None), 
-    session_manager: SessionManager = Depends(get_session_manager)
+    session_manager: SessionManager = Depends(get_session_manager),
+    orchestrator: Orchestrator = Depends(Orchestrator.get_orchestrator)
 ):
     await websocket.accept()    # accept the connection 
 
@@ -178,9 +184,17 @@ async def websocket_endpoint(
                         "content": "session_validated",
                     }) 
             elif data.get("action") == "user_request": 
-                print(data)
-                pass
-           
+                session_id = data.get("sessionId")
+                if not await session_manager.validate_session(session_id=session_id, user_id=user["sub"]):
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": "Invalid session"
+                    })
+                    await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                    return
+                
+
+                await orchestrator.orchestrate_agents(websocket=websocket, session_id=session_id, user_id=user["sub"], data=data) 
     except WebSocketDisconnect:
         print("disconnect")
 
