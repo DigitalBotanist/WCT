@@ -30,17 +30,28 @@ class Orchestrator:
         # Save user message
         # self.conversation_manager.save_message(session_id, "user", "input", user_input)
 
-        intent = self.router.classify_intent(data.get("content"))
-       
+        intent, max_prob = self.router.classify_intent(data.get("content"))
+        if max_prob < 0.3:
+            await websocket.send_json({
+                "type": "message",
+                "content": "Sorry I can't understand"
+                }) 
+            return 
+        elif (intent == 'greeting'):
+            await websocket.send_json({
+                "type": "message",
+                "content": "Hello how can i help you?"
+                }) 
+            return
 
-        if (intent == 'animal_classification'):
+        elif (intent == 'animal_classification'):
             image_data = data.get('image')
             if not image_data:
                 await websocket.send_json({
-                    "type": "error",
+                    "type": "message",
                     "content": f"No image is attached"
                 })
-                return; 
+                return
 
              
             if isinstance(image_data, str) and image_data.startswith("data:image/"):
@@ -62,7 +73,7 @@ class Orchestrator:
                 "type": "message",
                 "content": f"This animal is: {response['label']}"
             }) 
-
+        
             
 
 

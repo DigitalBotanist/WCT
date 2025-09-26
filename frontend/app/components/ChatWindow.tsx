@@ -26,11 +26,13 @@ const ChatWindow = () => {
         if (!sessionId.current) {
             sendMessage("create_session", "message", message, imageBase64);
             setMessage("");
+            setImageBase64(null)
             return;
         }
 
         sendMessage("user_request", "message", message, imageBase64);
         setMessage("");
+        setImageBase64(null)
     };
 
     const handleAddClick = () => {

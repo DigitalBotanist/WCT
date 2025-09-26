@@ -194,7 +194,7 @@ async def websocket_endpoint(
                     return
                 
 
-                await orchestrator.orchestrate_agents(websocket=websocket, session_id=session_id, user_id=user["sub"], data=data) 
+            await orchestrator.orchestrate_agents(websocket=websocket, session_id=session_id, user_id=user["sub"], data=data) 
     except WebSocketDisconnect:
         print("disconnect")
 
