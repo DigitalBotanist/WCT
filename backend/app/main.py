@@ -145,28 +145,41 @@ async def websocket_endpoint(
     try:
         while True:
             data = await websocket.receive_json()
-
+            print(data.get("action"))
             if data.get("action") == "create_session":
-                print("creating session")
-                await session_manager.create_session(user["sub"], initial_context={
-                    "initial_message": data.get("message", "")
-            })
+                session_id = await session_manager.create_session(user["sub"], initial_context={
+                    "initial_message": data.get("content", "")
+                })
 
-            if data.get("action") == 'continue_session':
+                if session_id: 
+                    await websocket.send_json({
+                        'type': 'sessionId',
+                        'content': str(session_id)
+                    })
+                else:
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": "Couldn't create session"
+                    }) 
+
+            elif data.get("action") == 'continue_session':
                 session_id = data.get("sessionId")
 
                 if not await session_manager.validate_session(session_id=session_id, user_id=user["sub"]):
                     await websocket.send_json({
                         "type": "error",
-                        "message": "Invalid session"
+                        "content": "Invalid session"
                     })
                     await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
                     return
                 else: 
                     await websocket.send_json({
-                        "type": "session_validated",
-                        "sessionId": f"{session_id}"
+                        "type": "connection_status",
+                        "content": "session_validated",
                     }) 
+            elif data.get("action") == "user_request": 
+                print(data)
+                pass
            
     except WebSocketDisconnect:
         print("disconnect")

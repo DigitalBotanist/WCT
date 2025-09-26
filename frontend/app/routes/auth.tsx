@@ -13,14 +13,14 @@ export function meta(args: Route.MetaArgs) {
 }
 
 export default function Auth() {
-    const { state } = useAuth();
+    const { userState } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (state?.token) {
-            navigate("/dashboard");
+        if (userState?.token) {
+            navigate("/chat");
         }
-    }, [state?.token, navigate]);
+    }, [userState?.token, navigate]);
 
 
     return <LoginPage />;
