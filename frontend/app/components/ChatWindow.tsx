@@ -24,12 +24,13 @@ const ChatWindow = () => {
             return;
         }
         if (!sessionId.current) {
-            sendMessage("create_session", "message", message , imageBase64);
+            sendMessage("create_session", "message", message, imageBase64);
             setMessage("");
             return;
         }
 
         sendMessage("user_request", "message", message, imageBase64);
+        setMessage("");
     };
 
     const handleAddClick = () => {
@@ -67,14 +68,30 @@ const ChatWindow = () => {
 
     return (
         <div className="w-full h-full flex flex-col items-center">
-            <div className="flex-1">
+            <div className="flex-1 overflow-auto flex flex-col gap-4 w-4/5 my-3">
                 {messages
-                    // .filter((message) => message.type == "message")
-                    .map((message) => (
-                        <div>{message.content}</div>
-                    ))}
+                    .filter((message) => message.type == "message")
+                    .map((message) =>
+                        message.role == "user" ? (
+                            <>
+                                <div className="bg-background-300 p-5 w-3/5 rounded-2xl self-end">
+                                    {message.content}
+                                </div>
+                                {message.image && (
+                                    <img
+                                        className="w-3/5 self-end rounded-2xl"
+                                        src={message.image}
+                                    />
+                                )}
+                            </>
+                        ) : (
+                            <div className="bg-primary-800 p-5 w-3/5 rounded-2xl">
+                                {message.content}
+                            </div>
+                        )
+                    )}
             </div>
-            <form className="flex gap-2 w-9/10" onSubmit={handleSend}>
+            <form className="flex gap-2 w-9/10 mb-4" onSubmit={handleSend}>
                 {/* Hidden file input */}
                 <input
                     type="file"
@@ -96,7 +113,7 @@ const ChatWindow = () => {
                     id="message"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="w-full px-4 py-4 rounded-md border-2 border-background-600"
+                    className="w-full px-4 py-4 rounded-md border-2 border-background-600 focus:outline-1 focus:outline-primary-700"
                 />
                 <button className="bg-primary-800 p-4 rounded-md" type="submit">
                     Send
