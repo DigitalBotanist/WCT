@@ -30,3 +30,7 @@ yarn-error.log
 *.swp
 
 test.py
+uploads/
+
+*.plk
+terminal.sh
