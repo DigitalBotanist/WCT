@@ -1,6 +1,6 @@
 # jwt_utils.py
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import jwt, JWTError
 from dotenv import load_dotenv
 import os 
 
@@ -8,7 +8,7 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY") 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 30000
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -20,3 +20,14 @@ def create_access_token(data: dict):
 def decode_access_token(token: str):
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     return payload
+
+async def get_current_user(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        return payload
+    except JWTError:
+        return None
+        

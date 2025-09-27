@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, Request
+from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect, Query, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
@@ -6,12 +6,19 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
+import asyncio
+import base64
+from io import BytesIO
+from PIL import Image
 
-from app.database import Base, engine, SessionLocal
+from app.database import Base, engine, SessionLocal, get_db
 from app.models import User, Base
-from app.jwt_utils import create_access_token, decode_access_token
+from app.jwt_utils import create_access_token, decode_access_token, get_current_user
 from app.security import hash_password, verify_password
 from app.schemas import CreateUser, TokenWithEmail
+from app.session_manager import SessionManager, get_session_manager
+from app.utils import save_base64_image
+from app.orchestrator import Orchestrator
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,13 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Dependency: get DB session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -82,7 +83,7 @@ def signup(user: CreateUser, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     # create token 
-    token = create_access_token({"sub": user.email})
+    token = create_access_token({"sub": str(user.id), "email": user.email})
     return TokenWithEmail(access_token=token, token_type="bearer", user=user.email)
 
 @app.post("/login")
@@ -90,12 +91,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     # get the user from the database 
     user = db.query(User).filter(User.email == form_data.username).first()
 
+    if not user:
+        raise HTTPException(status_code=401, detail={"error": "Email is not registered"})
+
     # check passwrod
     if not user or not verify_password(form_data.password, user.password):
         raise HTTPException(status_code=401, detail={"error": "Invalid Credentials"})
     
     # create token
-    token = create_access_token({"sub": user.email})
+    token = create_access_token({"sub": str(user.id), "email": user.email})
     return TokenWithEmail(access_token=token, token_type="bearer", user=user.email)
 
 @app.get("/me")
@@ -106,6 +110,97 @@ def read_me(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Invalid token")
     
     return {"email": payload.get("sub")}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(
+    websocket: WebSocket, 
+    token: str | None = Query(default=None), 
+    session_manager: SessionManager = Depends(get_session_manager),
+    orchestrator: Orchestrator = Depends(Orchestrator.get_orchestrator)
+):
+    await websocket.accept()    # accept the connection 
+
+    # check if the token exist 
+    if not token:
+        error_message = {
+            "type": "error",
+            "code": "missing_token",
+            "message": "Token is required"
+        }
+        await websocket.send_json(error_message)
+        await asyncio.sleep(0.1)
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    # check the user 
+    user = await get_current_user(token=token)
+    print(user)
+    if not user: 
+        #send error to the client
+        error_message = {
+            "type": "error", 
+            "code": "authentication_failed", 
+            "message": "Invalid or expired token"
+        }
+        await websocket.send_json(error_message)
+        await asyncio.sleep(0.1)
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return 
+    
+    try:
+        while True:
+            data = await websocket.receive_json()
+            print(data.get("action"))
+            if data.get("action") == "create_session":
+                session_id = await session_manager.create_session(user["sub"], initial_context={
+                    "initial_message": data.get("content", "")
+                })
+
+                if session_id: 
+                    await websocket.send_json({
+                        'type': 'sessionId',
+                        'content': str(session_id)
+                    })
+                else:
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": "Couldn't create session"
+                    }) 
+
+            elif data.get("action") == 'continue_session':
+                session_id = data.get("sessionId")
+
+                if not await session_manager.validate_session(session_id=session_id, user_id=user["sub"]):
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": "Invalid session"
+                    })
+                    await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                    return
+                else: 
+                    await websocket.send_json({
+                        "type": "connection_status",
+                        "content": "session_validated",
+                    }) 
+            elif data.get("action") == "user_request": 
+                session_id = data.get("sessionId")
+                if not await session_manager.validate_session(session_id=session_id, user_id=user["sub"]):
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": "Invalid session"
+                    })
+                    await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                    return
+                
+
+            await orchestrator.orchestrate_agents(websocket=websocket, session_id=session_id, user_id=user["sub"], data=data) 
+    except WebSocketDisconnect:
+        print("disconnect")
+
+
+
+
 
 @app.post("/classify/")
 async def upload_file(file: UploadFile = File(...)):
