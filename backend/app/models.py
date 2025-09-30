@@ -68,7 +68,7 @@ class ConversationMessage(Base):
     
     # Relationships
     session = relationship("ChatSession", back_populates="messages")
-
+    attachments = relationship("Attachments", back_populates="message")
     def __repr__(self):
         return f"<ConversationMessage(id={self.id}, session_id={self.session_id}, role={self.role})>"
 
@@ -84,4 +84,26 @@ class ConversationMessage(Base):
             "content": self.content,
             "meta_data": self.meta_data,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,  # Serialize datetime to ISO string
+            "attachments": [attachment.to_dict() for attachment in self.attachments]
+        }
+
+
+class Attachments(Base):
+    __tablename__ = "attachments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    message_id = Column(UUID(as_uuid=True), ForeignKey('conversation_messages.id'), index=True, nullable=False)
+    path = Column(String, nullable=False)
+    type = Column(String, nullable=False)
+
+    # relationships
+    
+    message = relationship("ConversationMessage", back_populates="attachments")
+
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "path": self.path,
+            "message_id": self.message_id,
+            "type": self.type
         }

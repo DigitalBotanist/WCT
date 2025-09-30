@@ -135,6 +135,14 @@ async def get_all_sessions(
     sessions = await session_manager.get_all_sessions(user.id)
     return [session.as_dict() for session in sessions]
 
+@app.get("/attachment/{attachment_id}")
+def get_attachment(
+    attachment_id: str,
+    # token: str = Depends(oauth2_scheme), 
+    conversation_manager: ConversationManager =Depends(ConversationManager.get_conversation_manager),
+    ):
+
+    return conversation_manager.get_attachment(attachment_id=attachment_id) 
 
 @app.get("/me")
 def read_me(token: str = Depends(oauth2_scheme)):

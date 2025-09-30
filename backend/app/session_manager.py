@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from fastapi import Depends
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -67,7 +68,7 @@ class SessionManager:
             print("session not found")
 
     async def get_all_sessions(self, user_id):
-        return self.db_session.query(ChatSession).filter(ChatSession.user_id == user_id).all()
+        return self.db_session.query(ChatSession).filter(ChatSession.user_id == user_id).order_by(desc(ChatSession.created_at)).all()
 
 def get_session_manager(db: Session = Depends(get_db) ) -> SessionManager: 
     return SessionManager(db_session=db)

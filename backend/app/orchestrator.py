@@ -5,6 +5,7 @@ from app.agents.image_classifer_agent import ImageClassifierAgent
 from app.message_router.message_router import MessageRouter
 from app.utils import save_base64_image
 from app.conversation_manager import ConversationManager
+from app.models import ConversationMessage
 
 class Orchestrator: 
     _instance = None 
@@ -26,14 +27,14 @@ class Orchestrator:
             cls._instance = cls(conversation_manager)
         return cls._instance
 
-    async def orchestrate_agents(self, websocket, session_id, user_id, data, image_data: Any = None):
+    async def orchestrate_agents(self, websocket, session_id, user_id, data):
                 # Get conversation history
         # history = self.conversation_manager.get_history(session_id)
         
         # Save user message
         # self.conversation_manager.save_message(session_id, "user", "input", user_input)
 
-        self.conversation_manager.save_message(session_id=session_id, content=data.get("content"), role="user", agent_type="user")
+        request_message: ConversationMessage = self.conversation_manager.save_message(session_id=session_id, content=data.get("content"), role="user", agent_type="user")
      
         intent, max_prob = self.router.classify_intent(data.get("content"))
         if max_prob < 0.3:
@@ -59,7 +60,8 @@ class Orchestrator:
             if isinstance(image_data, str) and image_data.startswith("data:image/"):
                 print("saving image")
                 try:
-                    filepath = save_base64_image(image_data, save_dir="uploads")
+                    filepath = save_base64_image(image_data, save_dir="uploads/img")
+                    self.conversation_manager.save_attachments(type="img", message_id=request_message.id, attachemnts_paths=[filepath]) # save to the database 
                     response = {
                         "type": "image_received",
                         "content": "Image received and processed"
