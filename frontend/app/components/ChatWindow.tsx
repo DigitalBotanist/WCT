@@ -6,11 +6,13 @@ import logo from "app/assets/logo.svg";
 import { resizeImage } from "~/utils/imageUtils";
 import type Message from "~/interfaces/Message";
 import type MessageWithAttachment from "~/interfaces/MessageWithAttachment";
+import { useAuth } from "~/contexts/AuthContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 const ChatWindow = () => {
     const navigate = useNavigate();
+    const { userState } = useAuth();
     const { session_id } = useParams();
     const [message, setMessage] = useState<string>("");
     const [messages, setMessages] = useState<Message[]>([]);
@@ -71,10 +73,17 @@ const ChatWindow = () => {
     };
 
     // fetch conversation data with attachments
-    const fetchConversationData = async (sessionId: string): Promise<Message[]> => {
+    const fetchConversationData = async (
+        sessionId: string
+    ): Promise<Message[]> => {
         try {
             const response = await fetch(
-                `${API_URL}/conversation/${session_id}`
+                `${API_URL}/conversation/${session_id}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${userState.token}`,
+                    },
+                }
             );
 
             const msgs: MessageWithAttachment[] = await response.json();
@@ -93,7 +102,7 @@ const ChatWindow = () => {
         } catch (err: any) {
             console.log(err.message);
         }
-        return []
+        return [];
     };
 
     // fetch each attachment
@@ -104,7 +113,12 @@ const ChatWindow = () => {
                 msg.attachments.map(async (attachment) => {
                     try {
                         const attachmentResponse = await fetch(
-                            `${API_URL}/attachment/${attachment.id}`
+                            `${API_URL}/attachment/${attachment.id}`,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${userState.token}`,
+                                },
+                            }
                         );
                         const attachmentData = await attachmentResponse.json();
                         if (attachment.type == "img") {
@@ -140,7 +154,7 @@ const ChatWindow = () => {
         loadConversation();
     }, [session_id]);
 
-    // connect the socket in the first rendering 
+    // connect the socket in the first rendering
     useEffect(() => {
         connect();
     }, []);
@@ -187,7 +201,7 @@ const ChatWindow = () => {
                     ref={fileInputRef}
                     className="hidden"
                     onChange={handleFileChange}
-                    accept="image/*,.pdf,.doc,.docx" // customize accepted file types
+                    accept="image/*,.pdf,.doc,.docx,.csv" // customize accepted file types
                 />
                 <button
                     type="button"

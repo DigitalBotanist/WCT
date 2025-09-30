@@ -26,20 +26,3 @@ def decode_access_token(token: str):
         return payload
     except JWTError: 
         return None
-
-async def verify_user(token: str, db_session: Session): 
-    """
-    verify if the user is in the database 
-    and return user object 
-    or return None
-    """ 
-    payload = decode_access_token(token)
-    user_id = str(payload.get("sub"))
-    if user_id is None: 
-        return None 
-    
-    user = db_session.query(User).filter(User.id == user_id).first()
-    if not user: 
-        return None 
-    
-    return user

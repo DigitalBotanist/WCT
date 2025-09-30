@@ -13,13 +13,14 @@ from PIL import Image
 
 from app.database import Base, engine, SessionLocal, get_db
 from app.models import User, Base
-from app.jwt_utils import create_access_token, decode_access_token, verify_user
+from app.jwt_utils import create_access_token, decode_access_token
 from app.security import hash_password, verify_password
 from app.schemas import CreateUser, TokenWithEmail
 from app.session_manager import SessionManager, get_session_manager
 from app.utils import save_base64_image
 from app.orchestrator import Orchestrator
 from app.conversation_manager import ConversationManager
+from app.user_manager import UserManager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -104,13 +105,19 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return TokenWithEmail(access_token=token, token_type="bearer", user=user.email)
 
 @app.get("/conversation/{session_id}")
-def get_all_conversations(
+async def get_all_conversations(
     session_id, 
+    token: str = Depends(oauth2_scheme), 
+    user_manager: UserManager = Depends(UserManager.get_user_manager),
     conversation_manager: ConversationManager =Depends(ConversationManager.get_conversation_manager)
     ):
     """
     get all session conversations
     """
+    user = await user_manager.verify_token(token=token)
+    if not user: 
+        raise HTTPException(status_code=403, detail="Token not found. permission denied")
+
     messages = conversation_manager.get_all_session_messages(session_id=session_id)
     if not messages:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -120,15 +127,14 @@ def get_all_conversations(
 @app.get("/chat_sessions")
 async def get_all_sessions(
     token: str = Depends(oauth2_scheme), 
-    db_session: Session = Depends(get_db), 
+    user_manager: UserManager = Depends(UserManager.get_user_manager),
     session_manager: SessionManager = Depends(get_session_manager)
     ):
     """
     return all the user sessions
     """
 
-    print('token: ', token)
-    user = await verify_user(token=token, db_session=db_session)
+    user = await user_manager.verify_token(token=token)
     if not user: 
         raise HTTPException(status_code=403, detail="Token not found. permission denied")
     
@@ -136,23 +142,17 @@ async def get_all_sessions(
     return [session.as_dict() for session in sessions]
 
 @app.get("/attachment/{attachment_id}")
-def get_attachment(
+async def get_attachment(
     attachment_id: str,
-    # token: str = Depends(oauth2_scheme), 
+    token: str = Depends(oauth2_scheme), 
+    user_manager: UserManager = Depends(UserManager.get_user_manager),
     conversation_manager: ConversationManager =Depends(ConversationManager.get_conversation_manager),
     ):
 
+    user = await user_manager.verify_token(token=token)
+    if not user: 
+        raise HTTPException(status_code=403, detail="Token not found. permission denied")
     return conversation_manager.get_attachment(attachment_id=attachment_id) 
-
-@app.get("/me")
-def read_me(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = decode_access_token(token)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    return {"email": payload.get("sub")}
-
 
 @app.websocket("/ws")
 async def websocket_endpoint(
@@ -160,7 +160,7 @@ async def websocket_endpoint(
     token: str | None = Query(default=None), 
     session_manager: SessionManager = Depends(get_session_manager),
     orchestrator: Orchestrator = Depends(Orchestrator.get_orchestrator),
-    db_session: Session = Depends(get_db)
+    user_manager: UserManager = Depends(UserManager.get_user_manager),
 ):
     await websocket.accept()    # accept the connection 
 
@@ -177,7 +177,7 @@ async def websocket_endpoint(
         return
 
     # check the user 
-    user: User | None = await verify_user(token=token, db_session=db_session)
+    user: User | None = await user_manager.verify_token(token=token)
     print("user:" , user)
     if not user: 
         #send error to the client
