@@ -1,23 +1,14 @@
 // hooks/useWebSocket.ts
-import { useEffect, useRef, useCallback, useState } from "react";
+import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useAuth } from "~/contexts/AuthContext";
 
-interface WebSocketMessage {
-    action?: string;
-    type: "message" | "error" | "progress" | "connection_status" | "sessionId";
-    content: string;
-    role?: "system" | "user";
-    code?: string;
-    data?: any;
-    sessionId?: string;
-    image?: string;
-}
+import type WebSocketMessage  from "~/interfaces/WebSocketMessage";
 
-export const useWebSocket = () => {
+export const useWebSocket = (messages: WebSocketMessage[], setMessages: React.Dispatch<React.SetStateAction<WebSocketMessage[]>>) => {
     const { userState } = useAuth();
     const [isConnected, setIsConnected] = useState(false);
     const sessionId = useRef<null | string>(null);
-    const [messages, setMessages] = useState<WebSocketMessage[]>([]);
+    // const [messages, setMessages] = useState<WebSocketMessage[]>([]);
     const ws = useRef<WebSocket | null>(null);
 
     const connect = useCallback(() => {
@@ -133,7 +124,6 @@ export const useWebSocket = () => {
 
     return {
         isConnected,
-        messages,
         sendMessage,
         disconnect,
         connect,

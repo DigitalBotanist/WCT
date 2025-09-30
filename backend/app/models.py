@@ -39,6 +39,21 @@ class ChatSession(Base):
     def __repr__(self):
         return f"<ChatSession(id={self.id}, user_id={self.user_id}, status={self.status})>"
 
+    def as_dict(self):
+        """
+        Convert the ChatSession model instance to a dictionary.
+        """
+        return {
+            "id": str(self.id),  # Convert UUID to string for JSON compatibility
+            "user_id": str(self.user_id),  # Convert UUID to string for JSON compatibility
+            "title": self.title,
+            "created_at": self.created_at.isoformat() if self.created_at else None,  # Serialize datetime to ISO string
+            "closed_at": self.closed_at.isoformat() if self.closed_at else None,  # Serialize datetime to ISO string
+            "status": self.status,
+            "context": self.context,
+        }
+
+
 
 class ConversationMessage(Base):
     __tablename__ = "conversation_messages"
@@ -56,3 +71,17 @@ class ConversationMessage(Base):
 
     def __repr__(self):
         return f"<ConversationMessage(id={self.id}, session_id={self.session_id}, role={self.role})>"
+
+    def as_dict(self):
+        """
+        Convert the SQLAlchemy model instance to a dictionary
+        """
+        return {
+            "id": str(self.id),
+            "session_id": str(self.session_id),  # Convert UUID to string for JSON compatibility
+            "role": self.role,
+            "agent_type": self.agent_type,
+            "content": self.content,
+            "meta_data": self.meta_data,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,  # Serialize datetime to ISO string
+        }

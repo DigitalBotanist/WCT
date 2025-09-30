@@ -13,12 +13,13 @@ from PIL import Image
 
 from app.database import Base, engine, SessionLocal, get_db
 from app.models import User, Base
-from app.jwt_utils import create_access_token, decode_access_token, get_current_user
+from app.jwt_utils import create_access_token, decode_access_token, verify_user
 from app.security import hash_password, verify_password
 from app.schemas import CreateUser, TokenWithEmail
 from app.session_manager import SessionManager, get_session_manager
 from app.utils import save_base64_image
 from app.orchestrator import Orchestrator
+from app.conversation_manager import ConversationManager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -102,6 +103,39 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     token = create_access_token({"sub": str(user.id), "email": user.email})
     return TokenWithEmail(access_token=token, token_type="bearer", user=user.email)
 
+@app.get("/conversation/{session_id}")
+def get_all_conversations(
+    session_id, 
+    conversation_manager: ConversationManager =Depends(ConversationManager.get_conversation_manager)
+    ):
+    """
+    get all session conversations
+    """
+    messages = conversation_manager.get_all_session_messages(session_id=session_id)
+    if not messages:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    return [message.as_dict() for message in messages]
+
+@app.get("/chat_sessions")
+async def get_all_sessions(
+    token: str = Depends(oauth2_scheme), 
+    db_session: Session = Depends(get_db), 
+    session_manager: SessionManager = Depends(get_session_manager)
+    ):
+    """
+    return all the user sessions
+    """
+
+    print('token: ', token)
+    user = await verify_user(token=token, db_session=db_session)
+    if not user: 
+        raise HTTPException(status_code=403, detail="Token not found. permission denied")
+    
+    sessions = await session_manager.get_all_sessions(user.id)
+    return [session.as_dict() for session in sessions]
+
+
 @app.get("/me")
 def read_me(token: str = Depends(oauth2_scheme)):
     try:
@@ -117,7 +151,8 @@ async def websocket_endpoint(
     websocket: WebSocket, 
     token: str | None = Query(default=None), 
     session_manager: SessionManager = Depends(get_session_manager),
-    orchestrator: Orchestrator = Depends(Orchestrator.get_orchestrator)
+    orchestrator: Orchestrator = Depends(Orchestrator.get_orchestrator),
+    db_session: Session = Depends(get_db)
 ):
     await websocket.accept()    # accept the connection 
 
@@ -134,8 +169,8 @@ async def websocket_endpoint(
         return
 
     # check the user 
-    user = await get_current_user(token=token)
-    print(user)
+    user: User | None = await verify_user(token=token, db_session=db_session)
+    print("user:" , user)
     if not user: 
         #send error to the client
         error_message = {
@@ -153,7 +188,7 @@ async def websocket_endpoint(
             data = await websocket.receive_json()
             print(data.get("action"))
             if data.get("action") == "create_session":
-                session_id = await session_manager.create_session(user["sub"], initial_context={
+                session_id = await session_manager.create_session(user.id, initial_context={
                     "initial_message": data.get("content", "")
                 })
 
@@ -171,7 +206,7 @@ async def websocket_endpoint(
             elif data.get("action") == 'continue_session':
                 session_id = data.get("sessionId")
 
-                if not await session_manager.validate_session(session_id=session_id, user_id=user["sub"]):
+                if not await session_manager.validate_session(session_id=session_id, user_id=user.id):
                     await websocket.send_json({
                         "type": "error",
                         "content": "Invalid session"
@@ -185,7 +220,7 @@ async def websocket_endpoint(
                     }) 
             elif data.get("action") == "user_request": 
                 session_id = data.get("sessionId")
-                if not await session_manager.validate_session(session_id=session_id, user_id=user["sub"]):
+                if not await session_manager.validate_session(session_id=session_id, user_id=user.id):
                     await websocket.send_json({
                         "type": "error",
                         "content": "Invalid session"
@@ -194,20 +229,8 @@ async def websocket_endpoint(
                     return
                 
 
-            await orchestrator.orchestrate_agents(websocket=websocket, session_id=session_id, user_id=user["sub"], data=data) 
+            await orchestrator.orchestrate_agents(websocket=websocket, session_id=session_id, user_id=user.id, data=data) 
     except WebSocketDisconnect:
         print("disconnect")
 
-
-
-
-
-@app.post("/classify/")
-async def upload_file(file: UploadFile = File(...)):
-    contents = await file.read()
-    async with httpx.AsyncClient() as client:
-        files = {"file": (file.filename, contents, file.content_type)}
-        response = await client.post("http://localhost:8001/predict/", files=files)
-
-    return response.json()
 

@@ -1,21 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useWebSocket } from "~/hooks/useWebSocket";
+import type WebSocketMessage from "~/interfaces/WebSocketMessage";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ChatWindow = () => {
     const { session_id } = useParams();
     const [message, setMessage] = useState<string>("");
+    const [messages, setMessages] = useState<WebSocketMessage[]>([])
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [imageBase64, setImageBase64] = useState<string | null>(null);
     const navigate = useNavigate();
     const {
         isConnected,
-        messages,
         sendMessage,
         disconnect,
         connect,
         sessionId,
-    } = useWebSocket();
+    } = useWebSocket(messages, setMessages);
 
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,9 +55,33 @@ const ChatWindow = () => {
         reader.readAsDataURL(file); // base64 encode
     };
 
+    // check if session id exists
     useEffect(() => {
         if (session_id) {
             sessionId.current = session_id;
+            
+            const fetchConversation = async () => {
+                try {
+                    const response = await fetch(`${API_URL}/conversation/${session_id}`)
+
+                    const msgs: WebSocketMessage[] = await response.json()
+                    console.log(msgs)
+                    const data: WebSocketMessage[] = msgs.map(msg => (
+                        {
+                            type: "message",
+                            content: msg.content,
+                            image: msg.image,
+                            role: msg.role
+                        }
+                    )   
+                    )
+                    setMessages(data)
+                } catch(err: any) {
+                    console.log(err.message)
+                }             
+            }
+
+            fetchConversation()
         }
     }, []);
 

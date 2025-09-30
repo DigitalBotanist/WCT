@@ -1,12 +1,14 @@
 from typing import Any
+from fastapi import Depends
 
 from app.agents.image_classifer_agent import ImageClassifierAgent
 from app.message_router.message_router import MessageRouter
 from app.utils import save_base64_image
+from app.conversation_manager import ConversationManager
 
 class Orchestrator: 
     _instance = None 
-    def __init__(self): 
+    def __init__(self, conversation_manager: ConversationManager): 
         if Orchestrator._instance is not None: 
             raise Exception("Use `get_instance()` to access the singleton instance.")
 
@@ -15,12 +17,13 @@ class Orchestrator:
         } 
 
         self.router = MessageRouter()
+        self.conversation_manager = conversation_manager
         Orchestrator._instance = self
 
     @classmethod
-    def get_orchestrator(cls):
+    def get_orchestrator(cls, conversation_manager: ConversationManager = Depends(ConversationManager.get_conversation_manager)):
         if cls._instance is None:
-            cls._instance = cls()
+            cls._instance = cls(conversation_manager)
         return cls._instance
 
     async def orchestrate_agents(self, websocket, session_id, user_id, data, image_data: Any = None):
@@ -30,49 +33,62 @@ class Orchestrator:
         # Save user message
         # self.conversation_manager.save_message(session_id, "user", "input", user_input)
 
+        self.conversation_manager.save_message(session_id=session_id, content=data.get("content"), role="user", agent_type="user")
+     
         intent, max_prob = self.router.classify_intent(data.get("content"))
         if max_prob < 0.3:
-            await websocket.send_json({
+            response = {
                 "type": "message",
-                "content": "Sorry I can't understand"
-                }) 
-            return 
+                "content": "Sorry message is not clear"
+                } 
         elif (intent == 'greeting'):
-            await websocket.send_json({
+            response = {
                 "type": "message",
                 "content": "Hello how can i help you?"
-                }) 
-            return
+                }
 
         elif (intent == 'animal_classification'):
             image_data = data.get('image')
             if not image_data:
-                await websocket.send_json({
+                response = {
                     "type": "message",
                     "content": f"No image is attached"
-                })
-                return
+                }
 
              
             if isinstance(image_data, str) and image_data.startswith("data:image/"):
                 print("saving image")
                 try:
                     filepath = save_base64_image(image_data, save_dir="uploads")
-                    await websocket.send_json({
+                    response = {
                         "type": "image_received",
                         "content": "Image received and processed"
-                    })
+                    }
+
+                    agent_response = await self.agent[intent].process(task="classify", image_path=filepath, history={})
+
+                    response = {
+                        "type": "message",
+                        "content": f"This animal is: {agent_response['label']}"
+                    }
                 except Exception as e:
-                    await websocket.send_json({
+                    response = {
                         "type": "error",
                         "content": f"Failed to process image: {str(e)}"
-                    })
-            response = await self.agent[intent].process(task="classify", image_path=filepath, history={})
-
-            await websocket.send_json({
+                    }
+        else:
+            response = {
                 "type": "message",
-                "content": f"This animal is: {response['label']}"
-            }) 
+                "content": "Sorry I can't understand"
+            }               
+
+
+        if not response: 
+            return; 
+    
+        await websocket.send_json(response) 
+
+        self.conversation_manager.save_message(session_id=session_id, content=response["content"])
         
             
 
