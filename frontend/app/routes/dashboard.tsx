@@ -2,6 +2,7 @@ import { useAuth } from "~/contexts/AuthContext";
 import type {Route} from "./+types/dashboard"
 import { useNavigate } from "react-router";
 import { useEffect } from "react";
+import ChatWindow from "~/components/ChatWindow";
 
 export function meta(args: Route.MetaArgs) {
     return [
@@ -12,19 +13,20 @@ export function meta(args: Route.MetaArgs) {
 
 
 export default function Dashboard() {
-    const {state} = useAuth(); 
+    const {userState} = useAuth(); 
     const navigate = useNavigate()
 
 
     useEffect(() => {
-        if (!state?.token) {
+        if (!userState?.token) {
             navigate("/");
         }
-    }, [state?.token, navigate]);
+    }, [userState?.token, navigate]);
 
     return (
-        <div>
+        <div className="w-[100vw] h-[100vh]">
             dashboard
+            <div className="h-9/10"><ChatWindow/></div>
         </div>
     )
 
