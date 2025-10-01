@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from fastapi import Depends
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -21,16 +22,16 @@ class SessionManager:
         self.db_session.add(new_session)
         self.db_session.commit()
 
-        initial_message = ConversationMessage(
-            session_id=new_session.id,
-            role="system",
-            content=initial_context['initial_message'],
-            agent_type="user",
-            timestamp=datetime.now()
-        )
+        # initial_message = ConversationMessage(
+        #     session_id=new_session.id,
+        #     role="user",
+        #     content=initial_context['initial_message'],
+        #     agent_type="user",
+        #     timestamp=datetime.now()
+        # )
         
-        self.db_session.add(initial_message)
-        self.db_session.commit()
+        # self.db_session.add(initial_message)
+        # self.db_session.commit()
         
         # logger.info(f"Created new session {session_id} for user {user_id}")
 
@@ -66,6 +67,8 @@ class SessionManager:
         else:
             print("session not found")
 
+    async def get_all_sessions(self, user_id):
+        return self.db_session.query(ChatSession).filter(ChatSession.user_id == user_id).order_by(desc(ChatSession.created_at)).all()
 
 def get_session_manager(db: Session = Depends(get_db) ) -> SessionManager: 
     return SessionManager(db_session=db)

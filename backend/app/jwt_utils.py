@@ -2,7 +2,10 @@
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from dotenv import load_dotenv
+from sqlalchemy.orm import Session
 import os 
+
+from app.models import User
 
 load_dotenv()
 
@@ -18,16 +21,8 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 def decode_access_token(token: str):
-    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    return payload
-
-async def get_current_user(token: str):
-    try:
+    try: 
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            return None
         return payload
-    except JWTError:
+    except JWTError: 
         return None
-        

@@ -1,67 +1,165 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useWebSocket } from "~/hooks/useWebSocket";
+import type WebSocketMessage from "~/interfaces/WebSocketMessage";
+import logo from "app/assets/logo.svg";
+import { resizeImage } from "~/utils/imageUtils";
+import type Message from "~/interfaces/Message";
+import type MessageWithAttachment from "~/interfaces/MessageWithAttachment";
+import { useAuth } from "~/contexts/AuthContext";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ChatWindow = () => {
+    const navigate = useNavigate();
+    const { userState } = useAuth();
     const { session_id } = useParams();
     const [message, setMessage] = useState<string>("");
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const fileInputRef = useRef<HTMLInputElement | null>(null); // file input field
     const [imageBase64, setImageBase64] = useState<string | null>(null);
-    const navigate = useNavigate();
-    const {
-        isConnected,
-        messages,
-        sendMessage,
-        disconnect,
-        connect,
-        sessionId,
-    } = useWebSocket();
+    const { isConnected, sendMessage, disconnect, connect, sessionId } =
+        useWebSocket(messages, setMessages);
 
+    // sending message through the socket
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
 
+        // if message if empty don't send
         if (message == "") {
             return;
         }
+
+        // if there is not current session id send create session message
         if (!sessionId.current) {
             sendMessage("create_session", "message", message, imageBase64);
             setMessage("");
-            setImageBase64(null)
+            setImageBase64(null);
             return;
         }
 
+        // else send the message
         sendMessage("user_request", "message", message, imageBase64);
+
+        // set input box to empty
         setMessage("");
-        setImageBase64(null)
+        setImageBase64(null);
     };
 
+    // adding files
     const handleAddClick = () => {
-        fileInputRef.current?.click(); // Triggers the hidden file input
+        fileInputRef.current?.click();
     };
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // handle file attachments
+    const handleFileChange = async (
+        event: React.ChangeEvent<HTMLInputElement>
+    ) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        console.log("Selected file:", file.name);
-
         const reader = new FileReader();
-        reader.onloadend = () => {
-            setImageBase64(reader.result as string); // base64 string
+        reader.onloadend = async () => {
+            try {
+                const imgUrl = reader.result as string;
+                const resizeBase64Image = await resizeImage(imgUrl); // resize the image
+                console.log(resizeBase64Image);
+                setImageBase64(resizeBase64Image);
+            } catch (error: any) {
+                console.error("Error resizing the image: ", error);
+            }
         };
-        reader.readAsDataURL(file); // base64 encode
+        reader.readAsDataURL(file);
     };
 
-    useEffect(() => {
-        if (session_id) {
-            sessionId.current = session_id;
-        }
-    }, []);
+    // fetch conversation data with attachments
+    const fetchConversationData = async (
+        sessionId: string
+    ): Promise<Message[]> => {
+        try {
+            const response = await fetch(
+                `${API_URL}/conversation/${session_id}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${userState.token}`,
+                    },
+                }
+            );
 
+            const msgs: MessageWithAttachment[] = await response.json();
+
+            const msgWithAttachments: MessageWithAttachment[] =
+                await Promise.all(
+                    msgs.map((msg) => fetchAttachmentForMessage(msg))
+                );
+
+            return msgWithAttachments.map((msg) => ({
+                type: "message",
+                content: msg.content,
+                image: msg.image,
+                role: msg.role,
+            }));
+        } catch (err: any) {
+            console.log(err.message);
+        }
+        return [];
+    };
+
+    // fetch each attachment
+    const fetchAttachmentForMessage = async (msg: MessageWithAttachment) => {
+        if (msg.attachments) {
+            // Fetch the attachment data for each attachment
+            await Promise.all(
+                msg.attachments.map(async (attachment) => {
+                    try {
+                        const attachmentResponse = await fetch(
+                            `${API_URL}/attachment/${attachment.id}`,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${userState.token}`,
+                                },
+                            }
+                        );
+                        const attachmentData = await attachmentResponse.json();
+                        if (attachment.type == "img") {
+                            msg.image = attachmentData; // add image data to the message.image
+                        }
+                    } catch (error) {
+                        console.error("Error fetching attachment:", error);
+                    }
+                })
+            );
+        }
+
+        return msg;
+    };
+
+    // check if session id exists and get conversation data
+    // or if session id is null reset all the messages
+    useEffect(() => {
+        // if session id is null reset all
+        if (session_id == null) {
+            setMessages([]);
+            sessionId.current = null;
+            return;
+        }
+
+        sessionId.current = session_id; // set the current session id
+
+        const loadConversation = async () => {
+            const updatedMessages = await fetchConversationData(session_id);
+            setMessages(updatedMessages);
+        };
+
+        loadConversation();
+    }, [session_id]);
+
+    // connect the socket in the first rendering
     useEffect(() => {
         connect();
     }, []);
 
+    // change url if sessionid changes
     useEffect(() => {
         if (!sessionId.current) return;
         console.log("session id:", sessionId.current);
@@ -87,8 +185,11 @@ const ChatWindow = () => {
                                 )}
                             </>
                         ) : (
-                            <div className="bg-primary-800 p-5 w-3/5 rounded-2xl">
-                                {message.content}
+                            <div className="w-3/5 flex gap-2">
+                                <img src={logo} alt="" className="w-8" />
+                                <div className="bg-primary-800 p-5 flex-1 rounded-2xl">
+                                    {message.content}
+                                </div>
                             </div>
                         )
                     )}
@@ -100,7 +201,7 @@ const ChatWindow = () => {
                     ref={fileInputRef}
                     className="hidden"
                     onChange={handleFileChange}
-                    accept="image/*,.pdf,.doc,.docx" // customize accepted file types
+                    accept="image/*,.pdf,.doc,.docx,.csv" // customize accepted file types
                 />
                 <button
                     type="button"
