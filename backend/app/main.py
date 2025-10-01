@@ -242,3 +242,12 @@ async def websocket_endpoint(
         print("disconnect")
 
 
+
+
+@app.post("/analyzeM/")
+async def upload_file(file: UploadFile = File(...)):
+    contents = await file.read()
+    async with httpx.AsyncClient() as client:
+        files = {"file": (file.filename, contents, file.content_type)}
+        response = await client.post("http://localhost:8002/getClusters/", files=files)
+    return response.json()

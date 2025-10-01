@@ -77,6 +77,7 @@ const ChatWindow = () => {
         sessionId: string
     ): Promise<Message[]> => {
         try {
+            console.log("conversation id: ", userState.token)
             const response = await fetch(
                 `${API_URL}/conversation/${session_id}`,
                 {
@@ -144,6 +145,10 @@ const ChatWindow = () => {
             return;
         }
 
+        if (userState.token == null) {
+            return 
+        }
+
         sessionId.current = session_id; // set the current session id
 
         const loadConversation = async () => {
@@ -152,12 +157,12 @@ const ChatWindow = () => {
         };
 
         loadConversation();
-    }, [session_id]);
+    }, [session_id, userState]);
 
     // connect the socket in the first rendering
     useEffect(() => {
         connect();
-    }, []);
+    }, [userState]);
 
     // change url if sessionid changes
     useEffect(() => {
