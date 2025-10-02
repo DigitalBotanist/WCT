@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 
 from app.database import get_db
-from app.models import ConversationMessage, Attachments
+from app.models.database_models import ConversationMessage, Attachments
 from app.utils import image_to_base64
 
 class ConversationManager:

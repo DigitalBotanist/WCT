@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 import os 
 
-from app.models import User
+from app.models.database_models import User
 
 load_dotenv()
 

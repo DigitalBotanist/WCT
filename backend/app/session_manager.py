@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.database import get_db
-from app.models import ChatSession, ConversationMessage
+from app.models.database_models import ChatSession, ConversationMessage
 
 class SessionManager:
     def __init__(self, db_session: Session):

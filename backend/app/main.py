@@ -12,7 +12,7 @@ from io import BytesIO
 from PIL import Image
 
 from app.database import Base, engine, SessionLocal, get_db
-from app.models import User, Base
+from app.models.database_models import User, Base
 from app.jwt_utils import create_access_token, decode_access_token
 from app.security import hash_password, verify_password
 from app.schemas import CreateUser, TokenWithEmail
@@ -21,6 +21,10 @@ from app.utils import save_base64_image
 from app.orchestrator import Orchestrator
 from app.conversation_manager import ConversationManager
 from app.user_manager import UserManager
+from app.models.graph import GraphState
+from app.message_router.message_router import MessageRouter
+from app.conversation_manager import ConversationManager
+from app.input_formatter import InputFormatter
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -161,8 +165,20 @@ async def websocket_endpoint(
     session_manager: SessionManager = Depends(get_session_manager),
     orchestrator: Orchestrator = Depends(Orchestrator.get_orchestrator),
     user_manager: UserManager = Depends(UserManager.get_user_manager),
+    message_router: MessageRouter = Depends(MessageRouter.get_message_router),
+    conversation_manager: ConversationManager = Depends(ConversationManager.get_conversation_manager),
+    input_formatter: InputFormatter = Depends(InputFormatter.get_input_formatter)
 ):
+    session_id = None 
+    async def send_message(message):
+        print(message)
+        conversation_manager.save_message(session_id=session_id, content=message.get("content"))
+        await websocket.send_json(message)
+
+        
     await websocket.accept()    # accept the connection 
+
+    orchestrator.register_response_handler("message", send_message)
 
     # check if the token exist 
     if not token:
@@ -193,12 +209,15 @@ async def websocket_endpoint(
     
     try:
         while True:
+            print("\n\nweb socket started\n\n")
             data = await websocket.receive_json()
-            print(data.get("action"))
+            print("\n\nsessionid:", data.get("sessionId"))
+
             if data.get("action") == "create_session":
                 session_id = await session_manager.create_session(user.id, initial_context={
                     "initial_message": data.get("content", "")
                 })
+                websocket.state.session_id = session_id
 
                 if session_id: 
                     await websocket.send_json({
@@ -226,7 +245,25 @@ async def websocket_endpoint(
                         "type": "connection_status",
                         "content": "session_validated",
                     }) 
-            elif data.get("action") == "user_request": 
+                websocket.state.session_id = session_id
+
+
+            session_id =  data.get("sessionId") or websocket.state.get("session_id") 
+            message = conversation_manager.save_message(session_id=session_id, content=data.get("content"), role='user')  # save messages to the database 
+
+            print("image", data.get('image'))
+            if data.get('image'): 
+                image, error = input_formatter.process_image(data)
+                if error: 
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": "Error while processing image"
+                    })  
+                
+                conversation_manager.save_attachments(message_id=message.id, attachemnts_paths=[image], type="img")
+            else:
+                image = None
+            if data.get("action") == "user_request": 
                 session_id = data.get("sessionId")
                 if not await session_manager.validate_session(session_id=session_id, user_id=user.id):
                     await websocket.send_json({
@@ -235,9 +272,13 @@ async def websocket_endpoint(
                     })
                     await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
                     return
-                
 
-            await orchestrator.orchestrate_agents(websocket=websocket, session_id=session_id, user_id=user.id, data=data) 
+            intent = message_router.classify_intent(data.get('content')) 
+            state = GraphState(user_input=data, intent=intent, user_id=user.id)
+            if image:
+                state.image = image
+
+            await orchestrator.run(state=state) 
     except WebSocketDisconnect:
         print("disconnect")
 
