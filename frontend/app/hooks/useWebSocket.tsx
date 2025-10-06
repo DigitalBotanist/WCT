@@ -29,6 +29,7 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
                         content: "Connected to chat",
                     },
                 ]);
+                console.log("socket connected")
             };
 
             ws.current.onmessage = (event) => {
@@ -81,11 +82,11 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
     const sendMessage = useCallback(
         (
             action: string,
-            type: "message",
+            type: "message" | "sessionId",
             content: string,
             image: string | null
         ) => {
-            console.log("session id in sendmessage: ", sessionId.current)
+            console.log("session id in sendmessage: ", sessionId.current, "action:", action)
             const msg: WebSocketMessage = sessionId.current
                 ? image
                     ? {
@@ -110,6 +111,7 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
                       role: "user",
                   };
             if (ws.current && isConnected) {
+                console.log("sending.......................", msg)
                 ws.current.send(JSON.stringify(msg));
                 setMessages((prev) => [...prev, msg]);
             }

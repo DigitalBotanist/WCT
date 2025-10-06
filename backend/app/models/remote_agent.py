@@ -1,7 +1,7 @@
 import httpx
 from typing import Dict
 
-from app.agents.agent import Agent
+from app.models.agent import Agent
 
 class RemoteAgent(Agent):
     def __init__(self, name, expertise, url):

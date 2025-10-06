@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.jwt_utils import decode_access_token, create_access_token
-from app.models import User
+from app.models.database_models import User
 
 class UserManager:
     _instance = None 
