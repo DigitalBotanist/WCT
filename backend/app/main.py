@@ -235,13 +235,14 @@ async def websocket_endpoint(
         await asyncio.sleep(0.1)
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return 
-    
+
     try:
         while True:
             logging.info(f"socket listenting....")
             data = await websocket.receive_json()
             logging.info(f"got socket message")
             logging.info(f"socket sessionid: {data.get('sessionId')}")
+            logging.debug(f"message: {data}")
 
             if data.get("action") == "create_session":
                 session_id = await session_manager.create_session(user.id, initial_context={
@@ -276,9 +277,18 @@ async def websocket_endpoint(
                         "content": "session_validated",
                     }) 
                 websocket.state.session_id = session_id
+                continue
+            try: 
+                session_id =  data.get("sessionId") or websocket.state.get("session_id") 
+            except err: 
+                await websocket.send_json({
+                        "type": "error",
+                        "content": "there is no session with session id"
+                    })
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            
 
-
-            session_id =  data.get("sessionId") or websocket.state.get("session_id") 
+                
             message = conversation_manager.save_message(session_id=session_id, content=data.get("content"), role='user')  # save messages to the database 
 
             logging.debug(f"image in the user request: {data.get('image') is not None}")

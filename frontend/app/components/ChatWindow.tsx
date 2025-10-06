@@ -168,15 +168,21 @@ const ChatWindow = ({session_id, setCurrentTitle}: {session_id: string | undefin
         loadConversation();
     }, [session_id, userState.token]);
 
-    useEffect(() => {
-        if (!isConnected) {
-            connect()
-            if (session_id)
-                sendMessage("continue_session", "sessionId", `${session_id}`, imageBase64);
-        }
-    }, [])
+    // useEffect(() => {
+    //     if (!isConnected) {
+    //         connect()
+    //         if (sessionId.current)
+    //     }
+    // }, [sessionId.current])
 
     // connect the socket in the first rendering
+
+    useEffect(() => {
+        if (isConnected && session_id) {
+            sendMessage("continue_session", "sessionId", `${session_id}`, imageBase64);
+        }
+    }, [isConnected, session_id])
+
     useEffect(() => {
         connect();
     }, [userState.token, session_id]);
@@ -190,10 +196,12 @@ const ChatWindow = ({session_id, setCurrentTitle}: {session_id: string | undefin
 
     return (
         <div className="w-full h-full flex flex-col items-center">
+            {/* messages */}
             <div className="flex-1 overflow-auto flex flex-col gap-4 w-4/5 my-3">
                 {messages
                     .filter((message) => message.type == "message")
                     .map((message) =>
+                        // user messages
                         message.role == "user" ? (
                             <>
                                 <div className="bg-background-300 p-5 w-3/5 rounded-2xl self-end">
@@ -207,8 +215,9 @@ const ChatWindow = ({session_id, setCurrentTitle}: {session_id: string | undefin
                                 )}
                             </>
                         ) : (
-                            <div className="w-3/5 flex gap-2">
-                                <img src={logo} alt="" className="w-8" />
+                            // system messages
+                            <div className="w-3/5 flex gap-2 items-start">
+                                <img src={logo} alt="" className="w-8 mt-4" />
                                 <div className="bg-primary-800 p-5 flex-1 rounded-2xl">
                                     {message.content}
                                 </div>

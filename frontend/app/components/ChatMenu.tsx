@@ -26,31 +26,31 @@ const ChatMenu = ({
     };
 
     return (
-        <div className="w-5/20 bg-background-700 flex flex-col items-center py-5 gap-5">
+        <div className="w-4/20 bg-background-700 flex flex-col items-center py-5 gap-5">
             <img src={logo} alt="" className="w-40" />
 
-            <button onClick={handleNewChat}>New Chat</button>
+            {/* new session button */}
+            <button
+                onClick={handleNewChat}
+                className="bg-primary-900 w-9/10 p-2 rounded-full cursor-pointer hover:bg-primary-800"
+            >
+                New Chat
+            </button>
 
-            <div className="w-full">
-                {history?.map((history) =>
-                    history.id == currentSession ? (
+            {/* history */}
+            <div className="w-full flex-1 flex flex-col h-full">
+                <h3 className="ml-3 text-text-700">History</h3>
+                <div className="w-full flex-1 overflow-auto p-2">
+                    {history?.map((history) => (
                         <div
                             key={history.id}
                             onClick={() => handleSessionClick(history.id)}
-                            className="p-4 w-full hover:cursor-pointer bg-background-400 hover:bg-primary-800"
+                            className={`p-3 w-full hover:cursor-pointer ${history.id == currentSession && "bg-background-400"} hover:bg-primary-800 text-14px rounded-xl`}
                         >
-                            {history.title ? history.title : "New Chat"}
+                            <p className="w-full h-5 whitespace-nowrap overflow-clip overflow-ellipsis">{history.title ? history.title : "New Chat"}</p>
                         </div>
-                    ) : (
-                        <div
-                            key={history.id}
-                            onClick={() => handleSessionClick(history.id)}
-                            className="p-4 w-full hover:cursor-pointer hover:bg-primary-800"
-                        >
-                            {history.title ? history.title : "New Chat"}
-                        </div>
-                    )
-                )}
+                    ))}
+                </div>
             </div>
         </div>
     );

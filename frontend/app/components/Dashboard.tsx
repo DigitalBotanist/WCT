@@ -40,6 +40,14 @@ const Dashboard = () => {
         });
     };
 
+    useEffect(() => {
+        if (session_id == undefined) {
+            setCurrentSession(null);
+            return
+        }
+        setCurrentSession(session_id)
+    }, [session_id]);
+
     return (
         <div className="w-full h-full flex">
             <ChatMenu

@@ -21,7 +21,7 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
             );
 
             ws.current.onopen = () => {
-                setIsConnected(true);
+                setIsConnected(false);
                 setMessages((prev) => [
                     ...prev,
                     {
@@ -29,6 +29,7 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
                         content: "Connected to chat",
                     },
                 ]);
+                setIsConnected(true);
                 console.log("socket connected")
             };
 
@@ -39,6 +40,10 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
                     console.log("setting session id", data.content)
                     sessionId.current = data.content
                     return 
+                }
+
+                if (data.action == 'connection_status') {
+                    setIsConnected(true)
                 }
 
                 console.log(data);
@@ -110,13 +115,13 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
                       content: content,
                       role: "user",
                   };
-            if (ws.current && isConnected) {
+            if (ws.current && isConnected && ws.current.readyState === WebSocket.OPEN) {
                 console.log("sending.......................", msg)
                 ws.current.send(JSON.stringify(msg));
                 setMessages((prev) => [...prev, msg]);
             }
         },
-        [isConnected]
+        [isConnected, ws.current]
     );
 
     // Auto-connect on mount and when dependencies change
@@ -124,6 +129,7 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
         connect();
         return () => disconnect();
     }, [connect, disconnect]);
+
 
     return {
         isConnected,
