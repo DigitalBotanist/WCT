@@ -7,5 +7,3 @@ pydantic==2.11.9
 python-dotenv==1.1.1
 python_jose==3.5.0
 SQLAlchemy==2.0.43
-tensorflow==2.20.0
-keras==3.8.0

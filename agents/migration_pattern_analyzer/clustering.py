@@ -1,17 +1,13 @@
 import pandas as pd
 from sklearn.cluster import KMeans
+from validator import check_required_columns
+from file_loader import file_loader
+
+
 
 def getClusters():
-    def check_required_columns(df):
-        required_cols = ["location-long", "location-lat"]
-        missing = [col for col in required_cols if col not in df.columns]
-        if missing:
-            print("❌ Missing columns:", missing)
-        else:
-            print("✅ All required columns are present.")
-
-    df = pd.read_csv("migration_original.csv")
-    check_required_columns(df)
+    file = "migration_original.csv"
+    df = file_loader(file)
 
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df = df.sort_values(['individual-local-identifier', 'timestamp'])

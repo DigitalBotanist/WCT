@@ -7,11 +7,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 
-from backend.app.database import Base, engine, SessionLocal
-from backend.app.models import User, Base
-from backend.app.jwt_utils import create_access_token, decode_access_token
-from backend.app.security import hash_password, verify_password
-from backend.app.schemas import CreateUser, TokenWithEmail
+from app.database import Base, engine, SessionLocal
+from app.models import User, Base
+from app.jwt_utils import create_access_token, decode_access_token
+from app.security import hash_password, verify_password
+from app.schemas import CreateUser, TokenWithEmail
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -114,5 +114,10 @@ async def upload_file(file: UploadFile = File(...)):
         files = {"file": (file.filename, contents, file.content_type)}
         response = await client.post("http://localhost:8001/predict/", files=files)
 
-    return response.json()
+
+# import pandas as pd
+# from agents.migration_pattern_analyzer.clustering import getClusters
+# @app.post("/getclusters")
+# def upload_csv():       
+#     return getClusters()
 
