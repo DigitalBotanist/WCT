@@ -12,8 +12,8 @@ async def respond():
 
 # run: uvicorn main:app --port 8001
 
-@app.post("/predict/")
+@app.post("/process")
 async def upload_file(file: UploadFile = File(...)):
     contents = await file.read()
     predication = classify_image(contents)
-    return {"prediction": predication}
+    return  predication

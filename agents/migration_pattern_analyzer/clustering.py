@@ -5,8 +5,8 @@ from file_loader import file_loader
 
 
 
-def getClusters():
-    file = "migration_original.csv"
+def getClusters(f):
+    file = f
     df = file_loader(file)
 
     df['timestamp'] = pd.to_datetime(df['timestamp'])
