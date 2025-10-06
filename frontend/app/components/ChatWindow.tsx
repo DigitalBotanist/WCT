@@ -10,10 +10,9 @@ import { useAuth } from "~/contexts/AuthContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const ChatWindow = () => {
+const ChatWindow = ({session_id, setCurrentTitle}: {session_id: string | undefined, setCurrentTitle: (title: string) => void}) => {
     const navigate = useNavigate();
     const { userState } = useAuth();
-    const { session_id } = useParams();
     const [message, setMessage] = useState<string>("");
     const [messages, setMessages] = useState<Message[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null); // file input field
@@ -105,6 +104,16 @@ const ChatWindow = () => {
         }
         return [];
     };
+
+
+    // check for title message 
+    useEffect(() => {
+        if (messages.length == 0) return 
+        const lastValue = messages[messages.length - 1];
+        if (lastValue.type == 'title') {
+            setCurrentTitle(lastValue.content)
+        }
+    }, [messages])
 
     // fetch each attachment
     const fetchAttachmentForMessage = async (msg: MessageWithAttachment) => {
