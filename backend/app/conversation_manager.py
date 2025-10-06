@@ -1,6 +1,7 @@
 from fastapi import Depends
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
+import logging
 
 from app.database import get_db
 from app.models.database_models import ConversationMessage, Attachments
@@ -26,16 +27,12 @@ class ConversationManager:
         """
         get all message of a session 
         """
-        # messages = self.db_session.query(ConversationMessage).filter(ConversationMessage.session_id == session_id).all()
+        logging.debug(f"querying all conversation messages, session_id: {session_id}")
         messages = self.db_session.query(ConversationMessage).\
             options(joinedload(ConversationMessage.attachments)).\
             filter(ConversationMessage.session_id == session_id).\
             order_by(ConversationMessage.timestamp).all()
-    #     message_with_attachments = self.db_session.query(ConversationMessage, Attachments.id).\
-    # outerjoin(Attachments, Attachments.message_id == ConversationMessage.id).\
-    # filter(ConversationMessage.session_id == session_id).\
-    # all()
-        # print("messages:", message_with_attachments)
+        logging.debug(f"got messages: {messages is not None}")
         
         return messages 
 
@@ -44,7 +41,7 @@ class ConversationManager:
         save the system messages in the database 
         """
 
-        print("saving message")
+        logging.debug("saving message")
         new_message = ConversationMessage(session_id = session_id, role=role, content=content, agent_type=agent_type)
         self.db_session.add(new_message)
         self.db_session.commit()
@@ -54,12 +51,14 @@ class ConversationManager:
         return new_message
     
     def save_attachments(self, message_id, attachemnts_paths: list, type):
+        logging.debug("saving attachment")
         for attachment_path in attachemnts_paths:
             attachment = Attachments(message_id=message_id, path=attachment_path, type=type)
             self.db_session.add(attachment)
             self.db_session.commit()
 
     def get_attachment(self, attachment_id):
+        logging.debug("getting attachment")
         attachment = self.db_session.query(Attachments).filter(Attachments.id == attachment_id).first()
 
         if (attachment.type == 'img'):

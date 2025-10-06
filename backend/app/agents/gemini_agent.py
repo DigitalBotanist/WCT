@@ -4,6 +4,7 @@ import os
 import httpx
 
 from app.models.agent import Agent
+from app.models.graph import Result
 
 GEMINI_KEY = os.getenv("GEMINI_KEY")
 
@@ -36,45 +37,38 @@ class GeminiLLM(Agent):
                     data = response.json()
                     
                     # Return structured response
-                    result = {
-                        'success': True,
-                        'response': '',
-                        'data': data  
-                    }
+                    result = Result(True, '') 
                     
                     # Extract the text from Gemini response
                     if 'candidates' in data and len(data['candidates']) > 0:
                         text_parts = data['candidates'][0]['content']['parts']
                         response_text = ''.join(part['text'] for part in text_parts)
-                        result['response'] = response_text
+                        result.content = response_text
                     else:
-                        result['response'] = "No response generated from Gemini"
-                        result['success'] = False
+                        result.content = "No response generated from Gemini"
+                        result.success = False
 
                     return result
                     
                 else:
-                    return {
-                        'success': False,
-                        'error': f"HTTP {response.status_code}",
-                        'details': response.text
-                    }
-                    
+                    # If the response status code is not 200, return a Result with failure
+                    result = Result(False, f"HTTP {response.status_code}")
+                    result.details = response.text
+                    return result
         except httpx.TimeoutException:
-            return {
-                'success': False,
-                'error': 'Request timeout',
-                'message': 'The request took too long to complete'
-            }
+            # Handle timeout error
+            result = Result(False, 'Request timeout')
+            result.details = 'The request took too long to complete'
+            return result
+
         except httpx.RequestError as e:
-            return {
-                'success': False,
-                'error': 'Request failed',
-                'details': str(e)
-            }
+            # Handle general request error
+            result = Result(False, 'Request failed')
+            result.details = str(e)
+            return result
+
         except Exception as e:
-            return {
-                'success': False,
-                'error': 'Unexpected error',
-                'details': str(e)
-            }
+            # Catch any other unexpected errors
+            result = Result(False, 'Unexpected error')
+            result.details = str(e)
+            return result

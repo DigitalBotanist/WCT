@@ -1,11 +1,12 @@
 from typing import Any, Optional, Dict, List, Callable
 from dotenv import load_dotenv
 import os
+import logging
 
 from app.agents.image_classifer_agent import ImageClassifierAgent
 from app.agents.gemini_agent import GeminiLLM 
 from app.models.agent import Agent
-from app.models.graph import NodeType, Node, GraphState
+from app.models.graph import NodeType, Node, GraphState, Result
 
 load_dotenv()
 
@@ -21,6 +22,7 @@ class WorkflowGraph:
         """
         add node to the graph with validation
         """
+        logging.debug(f"adding node: {node.node_id}")
         if node.type == NodeType.CONDITIONAL and not node.condition_function: 
             raise ValueError(f"Conditional node {node.node_id} must have a condition_function")
         
@@ -33,6 +35,7 @@ class WorkflowGraph:
         """
         add edge to the graph 
         """
+        logging.debug(f"adding edge {from_node} -> {to_node}")
         if from_node not in self.nodes:
             raise ValueError(f"Source node {from_node} does not exist")
         if to_node not in self.nodes:
@@ -49,7 +52,7 @@ class WorkflowGraph:
         """
         validate the graph
         """
-
+        logging.info(f"validating graph")
         # check if graph has a start and an end
         has_start = any(node.type == NodeType.START for node in self.nodes.values())
         has_end = any(node.type == NodeType.END for node in self.nodes.values())
@@ -114,6 +117,7 @@ class Orchestrator:
         self.agents = agents
         self.graph = workflow_graph
         self.conditional_functions = self._register_conditional_functions()
+        self.helper_functions = self._register_helper_functions()
         self.response_handlers = {}
         self._validate_setup()
 
@@ -134,8 +138,19 @@ class Orchestrator:
     def _register_conditional_functions(self) -> Dict[str, Callable]:
         """Enhanced condition functions with multi-way branching support"""
         return {
-            "route_by_intent": self._route_by_intent
+            "route_by_intent": self._route_by_intent, 
+            "should_generate_title": self._should_generate_title, 
         }
+
+    def _register_helper_functions(self) -> Dict[str, Callable]: 
+        return {
+            "store_title_helper": self._store_title_helper,
+        }
+
+    def _store_title_helper(self, state: GraphState):
+        prev_result = state.get_previous_result()
+        state.title = prev_result.content
+        return
 
     def _route_by_intent(self, state:GraphState):
         intent = state.intent
@@ -148,28 +163,52 @@ class Orchestrator:
         else:
             return 'general_llm'
 
+    def _should_generate_title(self, state: GraphState):
+        """
+        check if it should generate a title or not 
+        """
+        if state.title: 
+            return 'end'
+        prev_result = state.get_previous_result()
+        if state.intent == 'greeting': 
+            return 'end'
+        if not prev_result: 
+            return 'end'
+        if len(prev_result.content) < 4: 
+            return 'end'
+        return 'title_generate'
+
 
     async def run(self, state: GraphState, max_steps=20):
+        """
+        run the orchestrator
+        """
+        logging.info("running the orchestrator")
         current_node_id = next(iter([nid for nid, n in self.graph.nodes.items() if n.type == NodeType.START]))
 
         steps = 0
-        print(f"🚀 Starting workflow with input: '{state.user_input}'")
+        logging.info(f"Starting workflow with input: '{state.user_input.get('content')}'")
 
         while current_node_id and steps < max_steps:
             steps += 1
             node = self.graph.nodes[current_node_id]
 
-            print(f"\n📋 Step {steps}: {node.node_id} ({node.type.value})")
+            logging.info(f"📋Step {steps}: {node.node_id} ({node.type.value})")
             
             state.add_to_path(node.node_id)
             if node.type == NodeType.START:
                 next_nodes = self.graph.get_next_nodes(current_node_id)
                 current_node_id = next_nodes[0] if next_nodes else None
+            elif node.type == NodeType.HELPER:
+                self._run_helper(node=node, state=state)
+                next_nodes = self.graph.get_next_nodes(current_node_id)
+                current_node_id = next_nodes[0] if next_nodes else None                
 
             elif node.type == NodeType.CONDITIONAL:
                 next_node_id = self._evaluate_condition(node, state)
                 state.record_decision(node.node_id, next_node_id)
                 current_node_id = next_node_id
+                logging.debug(f"🔀 Conditional branching to: {current_node_id}")
             
             elif node.type == NodeType.AGENT: 
                 task = self._format_task(node.task_template, state)
@@ -179,50 +218,79 @@ class Orchestrator:
                 state.add_result(node_id=node.node_id, result=result)
                 state.add_to_path(node.node_id)
 
-                print(f"✅ Agent '{node.agent_name}' completed task")
+                logging.info(f"✅ Agent '{node.agent_name}' completed task")
 
                 next_nodes = self.graph.get_next_nodes(current_node_id)
                 current_node_id = next_nodes[0] if next_nodes else None
 
             elif node.type == NodeType.RESPONSE: 
                 # do the response 
+                logging.debug(f"response node: {node.node_id}")
                 previous_node_result = state.get_previous_result()
-
-                print(previous_node_result)
-                if isinstance(previous_node_result, str):
+                logging.debug(f"previous response: {previous_node_result}")
+                logging.debug(f"response data type: {type(previous_node_result)}")
+                if not previous_node_result:
                     response_data = {
                         'type': node.response_type or 'message',
                         'content': node.response, 
                     }
-                elif isinstance(previous_node_result, dict): 
-                    if previous_node_result.get('success'):
+                elif node.response_type == 'title': 
+                    response_data = {
+                        'type': node.response_type or 'message',
+                        'content': previous_node_result.content, 
+                    }
+                elif isinstance(previous_node_result, str):
+                    response_data = {
+                        'type': node.response_type or 'message',
+                        'content': previous_node_result
+                    }
+                elif isinstance(previous_node_result, Result): 
+                    if previous_node_result.success:
                         response_data = {
                             'type': node.response_type or 'message',
-                            'content': previous_node_result.get("response"), 
+                            'content': previous_node_result.content, 
                         }
                     else:
                         response_data = {
                             'type': node.response_type or 'error',
-                            'content': previous_node_result.get("error"), 
+                            'content': previous_node_result.content, 
                         }
+                else:
+                    logging.error("response node received nothing")
+                    response_data = {
+                        'type': node.response_type or 'error',
+                        'content': "error occured", 
+                    }
 
+                logging.debug(f"response_data: {response_data}")
                 # Trigger callback
                 handler = self.response_handlers.get(response_data['type'])
-                print("\n\nhandler",handler)
+                logging.debug(f"handler found: {handler is not None}")
                 if handler:
                     await handler(response_data)
 
                 next_nodes = self.graph.get_next_nodes(current_node_id)
                 current_node_id = next_nodes[0] if next_nodes else None
 
+                logging.debug(f"response node is done")
             elif node.type == NodeType.END: 
-                print("🏁 Workflow completed successfully!")
+                logging.info("🏁 Workflow completed successfully!")
                 break
             
         if steps >= max_steps:
             print("⚠️  Maximum steps reached, stopping workflow")
         
         return state
+    
+    def _run_helper(self, node: Node, state: GraphState): 
+        if not node.helper_function:
+            raise ValueError(f"Helper node {node.node_id} has no helper function")
+        
+        helper_func = self.helper_functions.get(node.helper_function)
+        if not helper_func:
+            raise ValueError(f"Unknown helper function: {node.helper_function}")
+         
+        helper_func(state)
 
     def _evaluate_condition(self, node: Node, state: GraphState) -> str: 
         """
@@ -258,12 +326,12 @@ class Orchestrator:
 
         previous_result = state.get_previous_result()
         if not task_template:
-            return previous_result
+            return {}
         
         context = {
             'user_input': state.user_input or '',
             'image': state.image or '',
-            'previous_result': state.get_previous_result() or '',
+            'prev_result_content': previous_result.content if previous_result else '',
         }
 
         task_data = {}
@@ -350,7 +418,7 @@ class Orchestrator:
             node_id="scientification_llm",
             type=NodeType.AGENT,
             agent_name="general_llm_agent", 
-            task_template="Provide scientific information  {previous_result} including taxonomy, habitat, and conservation status."
+            task_template="Provide scientific information  {prev_result_content} including taxonomy, habitat, and conservation status. only one sentence please"
         ) 
         general_llm_node = Node(
             node_id="general_llm",
@@ -362,6 +430,27 @@ class Orchestrator:
             node_id="response",
             type=NodeType.RESPONSE,
             response_type="message"
+        )
+        title_agent_node = Node(
+            node_id="title_generate",
+            type=NodeType.AGENT,
+            agent_name="general_llm_agent",
+            task_template="generate small title for: {prev_result_content}. return ONLY the title please"
+        )
+        should_title_node = Node(
+            node_id="should_title",
+            type=NodeType.CONDITIONAL,
+            condition_function="should_generate_title"
+        )
+        store_title_node = Node(
+            node_id="store_title",
+            type=NodeType.HELPER,
+            helper_function="store_title_helper"
+        )
+        title_response_node = Node(
+            node_id="title_response",
+            type=NodeType.RESPONSE,
+            response_type="title"
         )
         end_node = Node(
             node_id="end",
@@ -376,6 +465,10 @@ class Orchestrator:
         graph.add_node(scientific_llm_node)
         graph.add_node(general_llm_node)
         graph.add_node(response_node)
+        graph.add_node(title_agent_node)
+        graph.add_node(should_title_node)
+        graph.add_node(store_title_node)
+        graph.add_node(title_response_node)
         graph.add_node(end_node)
         
         # Define edges
@@ -387,95 +480,11 @@ class Orchestrator:
         graph.add_edge("general_llm", "response")
         graph.add_edge("scientification_llm", "response")
         graph.add_edge("greeting", "end")
-        graph.add_edge("response", "end")
+        graph.add_edge("response", "should_title")
+        graph.add_edge("should_title", "title_generate")
+        graph.add_edge("should_title", "end")
+        graph.add_edge("title_generate", "store_title")
+        graph.add_edge("store_title", "title_response")
+        graph.add_edge("title_response", "end")
         
         return graph
-
-# class Orchestrator: 
-#     _instance = None 
-#     def __init__(self, conversation_manager: ConversationManager): 
-#         if Orchestrator._instance is not None: 
-#             raise Exception("Use `get_instance()` to access the singleton instance.")
-
-#         self.agent = {
-#             'animal_classification': ImageClassifierAgent(url="http://localhost:8001")
-#         } 
-
-#         self.router = MessageRouter()
-#         self.conversation_manager = conversation_manager
-#         Orchestrator._instance = self
-
-#     @classmethod
-#     def get_orchestrator(cls, conversation_manager: ConversationManager = Depends(ConversationManager.get_conversation_manager)):
-#         if cls._instance is None:
-#             cls._instance = cls(conversation_manager)
-#         return cls._instance
-
-#     async def orchestrate_agents(self, websocket, session_id, user_id, data):
-#                 # Get conversation history
-#         # history = self.conversation_manager.get_history(session_id)
-        
-#         # Save user message
-#         # self.conversation_manager.save_message(session_id, "user", "input", user_input)
-
-#         request_message: ConversationMessage = self.conversation_manager.save_message(session_id=session_id, content=data.get("content"), role="user", agent_type="user")
-     
-#         intent, max_prob = self.router.classify_intent(data.get("content"))
-#         if max_prob < 0.3:
-#             response = {
-#                 "type": "message",
-#                 "content": "Sorry message is not clear"
-#                 } 
-#         elif (intent == 'greeting'):
-#             response = {
-#                 "type": "message",
-#                 "content": "Hello how can i help you?"
-#                 }
-
-#         elif (intent == 'animal_classification'):
-#             image_data = data.get('image')
-#             if not image_data:
-#                 response = {
-#                     "type": "message",
-#                     "content": f"No image is attached"
-#                 }
-
-             
-#             if isinstance(image_data, str) and image_data.startswith("data:image/"):
-#                 print("saving image")
-#                 try:
-#                     filepath = save_base64_image(image_data, save_dir="uploads/img")
-#                     self.conversation_manager.save_attachments(type="img", message_id=request_message.id, attachemnts_paths=[filepath]) # save to the database 
-#                     response = {
-#                         "type": "image_received",
-#                         "content": "Image received and processed"
-#                     }
-
-#                     agent_response = await self.agent[intent].process(task="classify", image_path=filepath, history={})
-
-#                     response = {
-#                         "type": "message",
-#                         "content": f"This animal is: {agent_response['label']}"
-#                     }
-#                 except Exception as e:
-#                     response = {
-#                         "type": "error",
-#                         "content": f"Failed to process image: {str(e)}"
-#                     }
-#         else:
-#             response = {
-#                 "type": "message",
-#                 "content": "Sorry I can't understand"
-#             }               
-
-
-#         if not response: 
-#             return; 
-    
-#         await websocket.send_json(response) 
-
-#         self.conversation_manager.save_message(session_id=session_id, content=response["content"])
-        
-            
-
-

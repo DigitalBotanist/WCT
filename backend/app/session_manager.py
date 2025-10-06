@@ -37,6 +37,24 @@ class SessionManager:
 
         return new_session.id
 
+    
+    def save_title(self, session_id, title): 
+        session: ChatSession = self.db_session.query(ChatSession).get(session_id)
+        
+        if session:
+            # Step 2: Update the title
+            session.title = title 
+            
+            # Step 3: Commit the changes
+            self.db_session.commit()
+            
+            # Step 4: Refresh the object to reflect updated state
+            self.db_session.refresh(session)
+            
+            print(f"Title updated to: {session.title}")
+        else:
+            print(f"session with ID {session_id} not found") 
+
     async def validate_session(self, session_id: str, user_id: str): 
         # check if the session exists
         session = self.db_session.query(ChatSession).filter(

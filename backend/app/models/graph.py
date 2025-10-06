@@ -7,6 +7,7 @@ class NodeType(Enum):
     AGENT = "agent" 
     CONDITIONAL = "conditional"
     RESPONSE = "response"
+    HELPER = "helper"
     END = "end"
 
 @dataclass
@@ -25,6 +26,14 @@ class Node:
     # For parallel execution support (future enhancement)
     is_parallel: bool = False
 
+    helper_function: Optional[str] = None
+
+@dataclass
+class Result:
+    success: bool
+    content: str
+    data: Optional[dict] = None
+    details: Optional[str] = None
 
 @dataclass
 class GraphState:
@@ -33,6 +42,7 @@ class GraphState:
     intent: str
     message_id: Optional[str] = None
     user_id: Optional[str] = None
+    title: str = None
     
     # Dynamic data
     image: Optional[str] = None
@@ -56,7 +66,7 @@ class GraphState:
     def record_decision(self, node_id: str, decision: str):
         self.branch_decisions[node_id] = decision
     
-    def get_previous_result(self) -> Optional[Any]:
+    def get_previous_result(self) -> Result:
         """Get result from the most recently executed node"""
         if not self.results:
             return None

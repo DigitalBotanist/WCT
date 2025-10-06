@@ -10,6 +10,8 @@ import asyncio
 import base64
 from io import BytesIO
 from PIL import Image
+import logging
+import colorlog
 
 from app.database import Base, engine, SessionLocal, get_db
 from app.models.database_models import User, Base
@@ -26,15 +28,36 @@ from app.message_router.message_router import MessageRouter
 from app.conversation_manager import ConversationManager
 from app.input_formatter import InputFormatter
 
+
+
+# 1. Setup colored logging first
+handler = colorlog.StreamHandler()
+handler.setFormatter(colorlog.ColoredFormatter(
+    '%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    log_colors={
+        'DEBUG': 'cyan',
+        'INFO': 'green', 
+        'WARNING': 'yellow',
+        'ERROR': 'red',
+        'CRITICAL': 'bold_red',
+    }
+))
+
+logging.basicConfig(level=logging.DEBUG, handlers=[handler])
+
+# Your other noisy libraries
+logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger('httpcore').setLevel(logging.WARNING)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     Base.metadata.create_all(bind=engine)
-    print("Tables and model ready!")
+    logging.info("Tables and model ready!")
     
     yield  
     
-    print("Shutting down...")
+    logging.info("Shutting down...")
 
 app = FastAPI(lifespan=lifespan)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -50,8 +73,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -169,16 +190,24 @@ async def websocket_endpoint(
     conversation_manager: ConversationManager = Depends(ConversationManager.get_conversation_manager),
     input_formatter: InputFormatter = Depends(InputFormatter.get_input_formatter)
 ):
+    logging.debug("web socket starting")
     session_id = None 
     async def send_message(message):
-        print(message)
+        logging.debug(f"sending message: {message}")
+        logging.debug(f"response: {message}")
         conversation_manager.save_message(session_id=session_id, content=message.get("content"))
         await websocket.send_json(message)
 
+    async def send_title(message):
+        logging.debug(f"sending title: {message}")
+        session_manager.save_title(session_id=session_id, title=message.get("content"))
+        await websocket.send_json(message)
         
     await websocket.accept()    # accept the connection 
+    logging.info(f"web socket is connected")
 
     orchestrator.register_response_handler("message", send_message)
+    orchestrator.register_response_handler("title", send_title)
 
     # check if the token exist 
     if not token:
@@ -194,7 +223,7 @@ async def websocket_endpoint(
 
     # check the user 
     user: User | None = await user_manager.verify_token(token=token)
-    print("user:" , user)
+    logging.debug(f"socket user: {user}")
     if not user: 
         #send error to the client
         error_message = {
@@ -209,9 +238,10 @@ async def websocket_endpoint(
     
     try:
         while True:
-            print("\n\nweb socket started\n\n")
+            logging.info(f"socket listenting....")
             data = await websocket.receive_json()
-            print("\n\nsessionid:", data.get("sessionId"))
+            logging.info(f"got socket message")
+            logging.info(f"socket sessionid: {data.get('sessionId')}")
 
             if data.get("action") == "create_session":
                 session_id = await session_manager.create_session(user.id, initial_context={
@@ -251,7 +281,7 @@ async def websocket_endpoint(
             session_id =  data.get("sessionId") or websocket.state.get("session_id") 
             message = conversation_manager.save_message(session_id=session_id, content=data.get("content"), role='user')  # save messages to the database 
 
-            print("image", data.get('image'))
+            logging.debug(f"image in the user request: {data.get('image') is not None}")
             if data.get('image'): 
                 image, error = input_formatter.process_image(data)
                 if error: 
@@ -284,11 +314,3 @@ async def websocket_endpoint(
 
 
 
-
-@app.post("/analyzeM/")
-async def upload_file(file: UploadFile = File(...)):
-    contents = await file.read()
-    async with httpx.AsyncClient() as client:
-        files = {"file": (file.filename, contents, file.content_type)}
-        response = await client.post("http://localhost:8002/getClusters/", files=files)
-    return response.json()

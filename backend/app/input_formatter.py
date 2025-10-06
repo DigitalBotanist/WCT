@@ -1,6 +1,4 @@
-import uuid
-import os
-import base64
+import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from pathlib import Path
@@ -29,7 +27,7 @@ class InputFormatter:
         if not image_data:
             return None, True
         if isinstance(image_data, str) and image_data.startswith("data:image/"):
-            print("saving image")
+            logging.debug("saving image")
             try:
                 filepath = save_base64_image(image_data, save_dir=self.img_upload_dir)
                 return filepath, True
