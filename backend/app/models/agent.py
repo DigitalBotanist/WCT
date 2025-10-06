@@ -8,7 +8,7 @@ class Agent(ABC):
         self.expertise = expertise
 
     @abstractmethod
-    def process(self, context: Dict, task:str=None, history:Dict=None) -> Dict: 
+    async def process(self, task:str=None, history:Dict=None) -> Dict: 
         """process the task"""
         pass
 

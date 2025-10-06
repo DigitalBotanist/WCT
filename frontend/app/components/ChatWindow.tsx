@@ -157,12 +157,20 @@ const ChatWindow = () => {
         };
 
         loadConversation();
-    }, [session_id, userState]);
+    }, [session_id, userState.token]);
+
+    useEffect(() => {
+        if (!isConnected) {
+            connect()
+            if (session_id)
+                sendMessage("continue_session", "sessionId", `${session_id}`, imageBase64);
+        }
+    }, [])
 
     // connect the socket in the first rendering
     useEffect(() => {
         connect();
-    }, [userState]);
+    }, [userState.token, session_id]);
 
     // change url if sessionid changes
     useEffect(() => {

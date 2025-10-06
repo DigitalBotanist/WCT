@@ -13,7 +13,7 @@ const ChatMenu = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (userState == null) {
+        if (userState.token == null) {
             return;
         }
 
