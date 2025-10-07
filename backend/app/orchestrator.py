@@ -435,6 +435,7 @@ class Orchestrator:
             order:
             family:
             genus:
+            species:
             locations:
             climate: (only one word)
             diet: (few words like zebra, grass, bugs)

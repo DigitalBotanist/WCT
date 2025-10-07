@@ -9,6 +9,7 @@ import type MessageWithAttachment from "~/interfaces/MessageWithAttachment";
 import { useAuth } from "~/contexts/AuthContext";
 import { marked } from "marked";
 import type AnimalInfo from "~/interfaces/AnimalInfo";
+import AnimalInfoButton from "~/components/AnimalInfoButton";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -30,6 +31,24 @@ const ChatWindow = ({
     const { isConnected, sendMessage, disconnect, connect, sessionId } =
         useWebSocket(messages, setMessages);
 
+    const handleDescribe = () => {
+        sendMessage("user_request", "message", "Provide a description", imageBase64);
+    }
+
+
+    const handleAnalyzeMigrationPattern = () => {
+        sendMessage("user_request", "message", "Analyze the migration pattern", imageBase64);
+    }
+        
+
+    const handleShowMigrationPattern = () => {
+        sendMessage("user_request", "message", "Show migration pattern", imageBase64);
+    }
+        
+    const handleTreatLevels = () => {
+        sendMessage("user_request", "message", "show threat levels", imageBase64);
+    }
+        
     // sending message through the socket
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
@@ -252,7 +271,9 @@ const ChatWindow = ({
                     <div className="flex-1 bg-background-700 rounded-4xl p-2 flex gap-2 flex-col items-center">
                         <div className="flex flex-col items-center">
                             <h3 className="font-bold">{animal.name}</h3>
-                            <h3 className="text-sm">{animal.scientific_name}</h3>
+                            <h3 className="text-sm">
+                                {animal.scientific_name}
+                            </h3>
                         </div>
 
                         {/* img */}
@@ -280,6 +301,20 @@ const ChatWindow = ({
                                     <p>{animal.order}</p>
                                 </div>
                             </div>
+                            <div className="w-full flex gap-2 items-center">
+                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg">
+                                    <h4 className="font-bold">Family</h4>
+                                    <p>{animal.family}</p>
+                                </div>
+                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg">
+                                    <h4 className="font-bold">Genus</h4>
+                                    <p>{animal.genus}</p>
+                                </div>
+                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg">
+                                    <h4 className="font-bold">Species</h4>
+                                    <p>{animal.species}</p>
+                                </div>
+                            </div>
                         </div>
                         <div className="text-sm rounded-2xl flex flex-col gap-1 items-center w-full bg-background-800 p-2">
                             <h3>Habitat</h3>
@@ -292,7 +327,6 @@ const ChatWindow = ({
                                     <h4 className="font-bold">Climate</h4>
                                     <p>{animal.climate}</p>
                                 </div>
-
                             </div>
                         </div>
                         <div className="text-sm rounded-2xl flex flex-col gap-1 items-center w-full bg-background-800 p-2">
@@ -310,18 +344,10 @@ const ChatWindow = ({
                         </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                        <button className="bg-background-900/40 p-3 rounded-lg">
-                            Describe
-                        </button>
-                        <button className="bg-background-900/40 p-3 rounded-lg">
-                            Describe
-                        </button>
-                        <button className="bg-background-900/40 p-3 rounded-lg">
-                            Describe
-                        </button>
-                        <button className="bg-background-900/40 p-3 rounded-lg">
-                            Describe
-                        </button>
+                        <AnimalInfoButton text="Describe" handleClick={handleDescribe}/>
+                        <AnimalInfoButton text="Analyze migration" handleClick={handleAnalyzeMigrationPattern}/>
+                        <AnimalInfoButton text="Show migration pattern" handleClick={handleShowMigrationPattern}/>
+                        <AnimalInfoButton text="Treat levels" handleClick={handleTreatLevels}/>
                         <button className="bg-red-900 p-3 rounded-lg">
                             Describe
                         </button>

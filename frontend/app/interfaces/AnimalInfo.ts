@@ -4,6 +4,7 @@ export default interface AnimalInfo {
     diet: string
     family: string
     genus: string 
+    species: string
     image: string
     locations: string
     name: string
