@@ -26,7 +26,7 @@ const ChatMenu = ({
     };
 
     return (
-        <div className="w-4/20 bg-background-700 flex flex-col items-center py-5 gap-5">
+        <div className="w-4/20 h-full bg-background-700 flex flex-col items-center py-5 gap-5">
             <img src={logo} alt="" className="w-40" />
 
             {/* new session button */}
@@ -38,9 +38,9 @@ const ChatMenu = ({
             </button>
 
             {/* history */}
-            <div className="w-full flex-1 flex flex-col h-full">
+            <div className="w-full h-full flex-1 flex flex-col overflow-auto">
                 <h3 className="ml-3 text-text-700">History</h3>
-                <div className="w-full flex-1 overflow-auto p-2">
+                <div className="w-full flex flex-col overflow-auto p-2">
                     {history?.map((history) => (
                         <div
                             key={history.id}

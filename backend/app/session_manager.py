@@ -3,6 +3,7 @@ from fastapi import Depends
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from datetime import datetime
+import logging
 
 from app.database import get_db
 from app.models.database_models import ChatSession, ConversationMessage
@@ -42,18 +43,13 @@ class SessionManager:
         session: ChatSession = self.db_session.query(ChatSession).get(session_id)
         
         if session:
-            # Step 2: Update the title
             session.title = title 
-            
-            # Step 3: Commit the changes
             self.db_session.commit()
-            
-            # Step 4: Refresh the object to reflect updated state
             self.db_session.refresh(session)
-            
-            print(f"Title updated to: {session.title}")
+
+            logging.info(f"Title updated to: {session.title}")
         else:
-            print(f"session with ID {session_id} not found") 
+            logging.info(f"session with ID {session_id} not found") 
 
     async def validate_session(self, session_id: str, user_id: str): 
         # check if the session exists
@@ -83,10 +79,27 @@ class SessionManager:
             session.updated_at = datetime.now()
             self.db_session.commit()
         else:
-            print("session not found")
+            logging.error("session not found")
 
     async def get_all_sessions(self, user_id):
         return self.db_session.query(ChatSession).filter(ChatSession.user_id == user_id).order_by(desc(ChatSession.created_at)).all()
+
+    def get_session(self, session_id):
+        logging.debug(f"getting session: {session_id}")
+        session = self.db_session.query(ChatSession).filter(ChatSession.id == session_id).first()
+        logging.debug(f"got session: {session}")
+        return session
+    
+    def save_context(self, session_id, context):
+        logging.debug("saving context")
+        session = self.db_session.query(ChatSession).filter(ChatSession.id == session_id).first()
+        if (session): 
+            session.context = context
+            session.updated_at = datetime.now()
+            self.db_session.commit()
+        else:
+            logging.error("session not found")
+
 
 def get_session_manager(db: Session = Depends(get_db) ) -> SessionManager: 
     return SessionManager(db_session=db)

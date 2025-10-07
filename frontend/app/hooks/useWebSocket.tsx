@@ -36,6 +36,7 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
             ws.current.onmessage = (event) => {
                 const data: WebSocketMessage = JSON.parse(event.data);
 
+                console.log(data)
                 if (data.type == "sessionId") {
                     console.log("setting session id", data.content)
                     sessionId.current = data.content

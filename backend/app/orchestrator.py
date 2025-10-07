@@ -227,8 +227,10 @@ class Orchestrator:
                 # do the response 
                 logging.debug(f"response node: {node.node_id}")
                 previous_node_result = state.get_previous_result()
+
                 logging.debug(f"previous response: {previous_node_result}")
                 logging.debug(f"response data type: {type(previous_node_result)}")
+
                 if not previous_node_result:
                     response_data = {
                         'type': node.response_type or 'message',
@@ -245,7 +247,13 @@ class Orchestrator:
                         'content': previous_node_result
                     }
                 elif isinstance(previous_node_result, Result): 
-                    if previous_node_result.success:
+                    if node.response_type == 'animal':
+                        response_data = {
+                            'type': node.response_type or 'message',
+                            'content': 'animal',
+                            'animal': previous_node_result.content, 
+                        }
+                    elif previous_node_result.success:
                         response_data = {
                             'type': node.response_type or 'message',
                             'content': previous_node_result.content, 
@@ -332,6 +340,7 @@ class Orchestrator:
             'user_input': state.user_input or '',
             'image': state.image or '',
             'prev_result_content': previous_result.content if previous_result else '',
+            'context': state.context
         }
 
         task_data = {}
@@ -414,17 +423,56 @@ class Orchestrator:
             agent_name="classification_agent",
             task_template="{image}"
         )
-        scientific_llm_node = Node(
-            node_id="scientification_llm",
+        animal_info_node = Node(
+            node_id="animal_info",
             type=NodeType.AGENT,
             agent_name="general_llm_agent", 
-            task_template="Provide scientific information  {prev_result_content} including taxonomy, habitat, and conservation status. only one sentence please"
+            task_template="""Provide scientific information  {prev_result_content}. as a json file 
+            name: 
+            scientific_name:
+            phylum: 
+            class: 
+            order:
+            family:
+            genus:
+            locations:
+            climate: (only one word)
+            diet: (few words like zebra, grass, bugs)
+            
+            and return ONLY the json file."""
         ) 
+        animal_info_response_node = Node(
+            node_id="animal_info_response",
+            type=NodeType.RESPONSE,
+            response_type="animal", 
+        )
+        summary_llm_node = Node(
+            node_id="summary_llm",
+            type=NodeType.AGENT,
+            agent_name="general_llm_agent", 
+            task_template="""
+            context: {context}
+            user request: {user_input} give me a summary. 
+            
+            bot:
+            researching....
+            research data: {prev_result_content}
+
+            if there not enough data do research and generate the bot reply(summary).
+            """
+        )
         general_llm_node = Node(
             node_id="general_llm",
             type=NodeType.AGENT,
             agent_name="general_llm_agent", 
-            task_template="{user_input}"
+            task_template="""
+            context: {context}
+            user request: {user_input}
+            
+            bot:
+
+            if there not enough data do research and generate the bot reply.
+            """
         )
         response_node = Node(
             node_id="response",
@@ -462,7 +510,9 @@ class Orchestrator:
         graph.add_node(intent_node)
         graph.add_node(greeting_response_node)
         graph.add_node(classification_agent_node)
-        graph.add_node(scientific_llm_node)
+        graph.add_node(animal_info_node)
+        graph.add_node(animal_info_response_node)
+        graph.add_node(summary_llm_node)
         graph.add_node(general_llm_node)
         graph.add_node(response_node)
         graph.add_node(title_agent_node)
@@ -476,9 +526,11 @@ class Orchestrator:
         graph.add_edge("intent_detection", "greeting")
         graph.add_edge("intent_detection", "classification_agent")
         graph.add_edge("intent_detection", "general_llm")
-        graph.add_edge("classification_agent", "scientification_llm") 
+        graph.add_edge("classification_agent", "animal_info") 
+        graph.add_edge("animal_info", "animal_info_response")
+        graph.add_edge("animal_info_response", "summary_llm")
+        graph.add_edge("summary_llm", "response")
         graph.add_edge("general_llm", "response")
-        graph.add_edge("scientification_llm", "response")
         graph.add_edge("greeting", "end")
         graph.add_edge("response", "should_title")
         graph.add_edge("should_title", "title_generate")
