@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useWebSocket } from "~/hooks/useWebSocket";
 import type WebSocketMessage from "~/interfaces/WebSocketMessage";
-import logo from "app/assets/logo.svg";
+import logo from "~/assets/logo.svg";
 import { resizeImage } from "~/utils/imageUtils";
 import type Message from "~/interfaces/Message";
 import type MessageWithAttachment from "~/interfaces/MessageWithAttachment";
@@ -157,12 +157,20 @@ const ChatWindow = () => {
         };
 
         loadConversation();
-    }, [session_id, userState]);
+    }, [session_id, userState.token]);
+
+    useEffect(() => {
+        if (!isConnected) {
+            connect()
+            if (session_id)
+                sendMessage("continue_session", "sessionId", `${session_id}`, imageBase64);
+        }
+    }, [])
 
     // connect the socket in the first rendering
     useEffect(() => {
         connect();
-    }, [userState]);
+    }, [userState.token, session_id]);
 
     // change url if sessionid changes
     useEffect(() => {

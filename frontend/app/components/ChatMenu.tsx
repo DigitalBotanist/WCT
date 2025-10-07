@@ -1,4 +1,4 @@
-import logo from "app/assets/logo_with_name.svg";
+import logo from "~/assets/logo_with_name.svg";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "~/contexts/AuthContext";
@@ -13,7 +13,7 @@ const ChatMenu = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (userState == null) {
+        if (userState.token == null) {
             return;
         }
 
