@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useWebSocket } from "~/hooks/useWebSocket";
 import type WebSocketMessage from "~/interfaces/WebSocketMessage";
-import logo from "app/assets/logo.svg";
+import logo from "~/assets/logo.svg";
 import { resizeImage } from "~/utils/imageUtils";
 import type Message from "~/interfaces/Message";
 import type MessageWithAttachment from "~/interfaces/MessageWithAttachment";
