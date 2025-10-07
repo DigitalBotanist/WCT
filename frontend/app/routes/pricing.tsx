@@ -1,4 +1,5 @@
 import type { Route } from "./+types/pricing";
+import Pricing from '~/components/Pricing'
 
 export function meta(args: Route.MetaArgs) {
     return [
@@ -9,7 +10,7 @@ export function meta(args: Route.MetaArgs) {
 export default function pricing() {
     return (
         <div className="">
-            pricing
+            <Pricing/>
         </div>
     );
 }
