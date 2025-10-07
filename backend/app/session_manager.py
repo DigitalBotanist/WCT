@@ -100,6 +100,18 @@ class SessionManager:
         else:
             logging.error("session not found")
 
+    def delete_chat_session(self, session_id):
+        logging.debug(f"deleting session: {session_id}")
+        session = self.db_session.query(ChatSession).get(session_id)
 
+        if session:
+            self.db_session.delete(session)
+            self.db_session.commit()
+            logging.info(f"Session {session_id} deleted.")
+            return  True
+        else:
+            logging.warning(f"Session {session_id} not found.")
+        
+        return False
 def get_session_manager(db: Session = Depends(get_db) ) -> SessionManager: 
     return SessionManager(db_session=db)

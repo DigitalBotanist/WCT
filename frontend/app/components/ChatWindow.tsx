@@ -15,9 +15,11 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const ChatWindow = ({
     session_id,
+    context,
     setCurrentTitle,
 }: {
     session_id: string | undefined;
+    context: AnimalInfo | null
     setCurrentTitle: (title: string) => void;
 }) => {
     const navigate = useNavigate();
@@ -128,24 +130,40 @@ const ChatWindow = ({
                 image: msg.image,
                 role: msg.role,
             }));
+
         } catch (err: any) {
             console.log(err.message);
         }
         return [];
     };
 
+    const fetchAnimalImage = async (image: string) => {
+        const response = await fetch(`${API_URL}/animal_img/${image}`, {
+            headers: {
+                Authorization: `Bearer ${userState.token}`,
+            },
+        });
+        const imgData = await response.json();
+        console.log(imgData);
+        setAnimalImg(imgData);
+    };
+
+    // check context
+    useEffect(() => {
+        if (!context) {
+            setAnimal(null)
+            return
+        };
+        
+        setAnimal(context)
+        console.log("context", context.image)
+        if (context.image) {
+            fetchAnimalImage(context.image);
+        }
+    }, [context]) 
+
     // check for title message
     useEffect(() => {
-        const fetchAnimalImage = async (image: string) => {
-            const response = await fetch(`${API_URL}/animal_img/${image}`, {
-                headers: {
-                    Authorization: `Bearer ${userState.token}`,
-                },
-            });
-            const imgData = await response.json();
-            console.log(imgData);
-            setAnimalImg(imgData);
-        };
         if (messages.length == 0) return;
 
         // get all title messages
@@ -160,7 +178,6 @@ const ChatWindow = ({
             if (title) setCurrentTitle(title.content);
         }
 
-        // get all animal messages
         const animalMessages = messages.filter((msg) => {
             if (msg.type == "animal") return msg;
         });

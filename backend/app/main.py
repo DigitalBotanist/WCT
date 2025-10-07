@@ -151,6 +151,27 @@ async def get_all_conversations(
 
     return [message.as_dict() for message in messages]
 
+@app.delete("/chat_session/{session_id}")
+async def get_all_conversations(
+    session_id, 
+    token: str = Depends(oauth2_scheme), 
+    user_manager: UserManager = Depends(UserManager.get_user_manager),
+    session_manager: SessionManager = Depends(get_session_manager)
+    ):
+    """
+    get all session conversations
+    """
+    user = await user_manager.verify_token(token=token)
+    if not user: 
+        raise HTTPException(status_code=403, detail="Token not found. permission denied")
+
+
+    if not session_manager.delete_chat_session(session_id=session_id):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    return  {"message": "Chat session deleted successfully."}
+
+
 @app.get("/chat_sessions")
 async def get_all_sessions(
     token: str = Depends(oauth2_scheme), 

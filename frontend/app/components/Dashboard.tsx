@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "~/contexts/AuthContext";
 import { useParams } from "react-router";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Dashboard = () => {
     const { userState } = useAuth();
     const { loading, error, getHistory } = useHistory();
@@ -13,6 +15,23 @@ const Dashboard = () => {
 
     const [history, setHistory] = useState<ChatSession[]>([]);
     const [currentSession, setCurrentSession] = useState<string | null>(null);
+
+    const handleDeleteChatSession = async (session_id: string) => {
+        const response = await fetch(`${API_URL}/chat_session/${session_id}`, {
+            method: "DELETE",
+            headers: {
+                Authorization: `Bearer ${userState.token}`,
+            },
+        });
+
+        if (response.ok) {
+            setHistory((prev) =>
+                prev.filter((session) => session.id != session_id)
+            );
+        } else {
+            console.error("Failed to delete session");
+        }
+    };
 
     useEffect(() => {
         if (userState.token == null) {
@@ -40,12 +59,28 @@ const Dashboard = () => {
         });
     };
 
+    const getContextFromSession = () => {
+        if (!session_id) return null;
+
+        const session = history.filter(
+            (session) => session.id == session_id
+        )[0];
+
+        console.log(session)
+
+        if (!session || session.context == undefined || !session.context.name ) {
+            return null;
+        } else {
+            return session.context;
+        }
+    };
+
     useEffect(() => {
         if (session_id == undefined) {
             setCurrentSession(null);
-            return
+            return;
         }
-        setCurrentSession(session_id)
+        setCurrentSession(session_id);
     }, [session_id]);
 
     return (
@@ -54,10 +89,12 @@ const Dashboard = () => {
                 history={history}
                 currentSession={currentSession}
                 setCurrentSession={setCurrentSession}
+                handleDeleteChatSession={handleDeleteChatSession}
             />
             <ChatWindow
                 session_id={session_id}
                 setCurrentTitle={setCurrentTitle}
+                context={getContextFromSession()}
             />
         </div>
     );

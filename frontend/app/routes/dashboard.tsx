@@ -26,7 +26,6 @@ export default function Dashboard() {
     return (
         <div className="w-[100vw] h-[100vh]">
             dashboard
-            <div className="h-9/10"><ChatWindow/></div>
         </div>
     )
 
