@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-from app.utils import save_base64_image
+from app.utils import save_base64_image, save_csv
 
 class InputFormatter:
     _instance = None 
@@ -15,8 +15,10 @@ class InputFormatter:
             
         self.upload_dir = Path(upload_dir)
         self.img_upload_dir = Path(upload_dir, 'img')
+        self.csv_upload_dir = Path(upload_dir, 'csv')
         self.upload_dir.mkdir(exist_ok=True)
         self.img_upload_dir.mkdir(exist_ok=True)
+        self.csv_upload_dir.mkdir(exist_ok=True)
 
         InputFormatter._instance = self
   
@@ -30,9 +32,26 @@ class InputFormatter:
             logging.debug("saving image")
             try:
                 filepath = save_base64_image(image_data, save_dir=self.img_upload_dir)
-                return filepath, True
+                return filepath, False
             except Exception as e:
                 return None, True
+
+    async def process_csv(self, file): 
+        """
+        
+        """
+        if not file: 
+            return None 
+
+        logging.debug("saving image")
+        try:
+            filepath = await save_csv(file, save_dir=self.csv_upload_dir)
+            return filepath
+        except Exception as e:
+            return None
+
+
+        
             
     @classmethod
     def get_input_formatter(cls):

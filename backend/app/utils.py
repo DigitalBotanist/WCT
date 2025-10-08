@@ -42,3 +42,14 @@ def image_to_base64(image_path: str) -> str:
 
     # Return as a data URL
     return f"data:{mime_type};base64,{base64_data}"
+
+async def save_csv(file, save_dir: str = "."):
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S%f')}.csv"
+
+    file_location = f"{save_dir}/{filename}"
+
+    with open(file_location, 'wb') as f: 
+        while chunk := await file.read(1024):
+            f.write(chunk)
+
+    return filename

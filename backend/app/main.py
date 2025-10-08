@@ -202,6 +202,23 @@ async def get_attachment(
         raise HTTPException(status_code=403, detail="Token not found. permission denied")
     return conversation_manager.get_attachment(attachment_id=attachment_id) 
 
+@app.post("/attachment/csv")
+async def get_attachment(
+    file: UploadFile = File(...),
+    token: str = Depends(oauth2_scheme), 
+    user_manager: UserManager = Depends(UserManager.get_user_manager),
+    conversation_manager: ConversationManager =Depends(ConversationManager.get_conversation_manager),
+    input_formatter: InputFormatter = Depends(InputFormatter.get_input_formatter)
+    ):
+
+    user = await user_manager.verify_token(token=token)
+    if not user: 
+        raise HTTPException(status_code=403, detail="Token not found. permission denied")
+
+    filepath = await input_formatter.process_csv(file) 
+    attachment = conversation_manager.save_temp_csv(user.id, filepath)
+    return {"id": attachment.id}
+
 @app.get("/animal_img/{filename}")
 async def get_attachment(
     filename: str,
@@ -352,6 +369,7 @@ async def websocket_endpoint(
             session = session_manager.get_session(session_id=session_id)
             message = conversation_manager.save_message(session_id=session_id, content=data.get("content"), role='user')  # save messages to the database 
 
+            # checking if there are images 
             logging.debug(f"image in the user request: {data.get('image') is not None}")
             if data.get('image'): 
                 image, error = input_formatter.process_image(data)
@@ -364,6 +382,15 @@ async def websocket_endpoint(
                 conversation_manager.save_attachments(message_id=message.id, attachemnts_paths=[image], type="img")
             else:
                 image = None
+            
+            # checking for csv
+            if data.get('csv'):
+                conversation_manager.save_csv_attachment(message_id=message.id, attachment_id=data.get('csv'))
+                csv = data.get('csv')
+            else: 
+                csv = None
+
+
             if data.get("action") == "user_request": 
                 session_id = data.get("sessionId")
                 if not await session_manager.validate_session(session_id=session_id, user_id=user.id):
@@ -379,6 +406,8 @@ async def websocket_endpoint(
             if image:
                 state.image = image
 
+            if csv: 
+                state.csv = csv
             if session.title: 
                 logging.debug(f"session title: {session.title}")
                 state.title = session.title

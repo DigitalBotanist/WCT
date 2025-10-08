@@ -6,4 +6,5 @@ export default interface Message {
     role?: "system" | "user";
     image?: string;
     animal?: AnimalInfo
+    csv?: string
 }

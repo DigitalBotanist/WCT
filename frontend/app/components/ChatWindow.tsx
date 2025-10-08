@@ -30,7 +30,7 @@ const ChatWindow = ({
     const [messages, setMessages] = useState<Message[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null); // file input field
     const [imageBase64, setImageBase64] = useState<string | null>(null);
-    const [csvBase64, setCsvBase64] = useState<string | null>(null)
+    const [csvFile, setCsvFile] = useState<string | "uploading" | null>(null);
     const {
         isConnected,
         sendMessage,
@@ -45,7 +45,8 @@ const ChatWindow = ({
             "user_request",
             "message",
             "Provide a description",
-            imageBase64
+            imageBase64,
+            csvFile
         );
     };
 
@@ -54,7 +55,8 @@ const ChatWindow = ({
             "user_request",
             "message",
             "Analyze the migration pattern",
-            imageBase64
+            imageBase64,
+            csvFile
         );
     };
 
@@ -63,7 +65,8 @@ const ChatWindow = ({
             "user_request",
             "message",
             "Show migration pattern",
-            imageBase64
+            imageBase64,
+            csvFile
         );
     };
 
@@ -72,7 +75,8 @@ const ChatWindow = ({
             "user_request",
             "message",
             "show threat levels",
-            imageBase64
+            imageBase64,
+            csvFile
         );
     };
 
@@ -80,7 +84,7 @@ const ChatWindow = ({
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (loading) {
+        if (loading || csvFile == 'uploading') {
             return;
         }
 
@@ -91,18 +95,25 @@ const ChatWindow = ({
 
         // if there is not current session id send create session message
         if (!sessionId.current) {
-            sendMessage("create_session", "message", message, imageBase64);
+            sendMessage(
+                "create_session",
+                "message",
+                message,
+                imageBase64,
+                csvFile
+            );
             setMessage("");
             setImageBase64(null);
             return;
         }
 
         // else send the message
-        sendMessage("user_request", "message", message, imageBase64);
+        sendMessage("user_request", "message", message, imageBase64, csvFile);
 
         // set input box to empty
         setMessage("");
         setImageBase64(null);
+        setCsvFile(null);
     };
 
     // adding files
@@ -117,23 +128,64 @@ const ChatWindow = ({
         const file = event.target.files?.[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-            try {
-                const imgUrl = reader.result as string;
-                const resizeBase64Image = await resizeImage(imgUrl); // resize the image
-                console.log(resizeBase64Image);
-                setImageBase64(resizeBase64Image);
-            } catch (error: any) {
-                console.error("Error resizing the image: ", error);
-            }
-        };
-        reader.readAsDataURL(file);
+        setImageBase64(null)
+        setCsvFile(null)
+        const filetype = file.type;
+
+        if (filetype.startsWith("image")) {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                try {
+                    const imgUrl = reader.result as string;
+                    const resizeBase64Image = await resizeImage(imgUrl); // resize the image
+                    console.log(resizeBase64Image);
+                    setImageBase64(resizeBase64Image);
+                } catch (error: any) {
+                    console.error("Error resizing the image: ", error);
+                }
+            };
+            reader.readAsDataURL(file);
+        } else if (filetype === "text/csv") {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                try {
+                    console.log("is csv data: ", true);
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    try {
+                        setCsvFile("uploading")
+                        const response = await fetch(`${API_URL}/attachment/csv`, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                Authorization: `Bearer ${userState.token}`,
+                            }
+                        });
+                
+                        if (response.ok) {
+
+                        const result = await response.json();
+                        console.log("File uploaded successfully:", result);
+                        setCsvFile(result.id)
+                        } else {
+                            setCsvFile("error while uploading. upload again")
+                        }
+                    } catch (error) {
+                        console.error("Error uploading file:", error);
+                    }
+                } catch (error: any) {
+                    console.error("Error resizing the image: ", error);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleFileRemove = () => {
-        setImageBase64(null)
-    }
+        setImageBase64(null);
+        setCsvFile(null)
+    };
 
     // fetch conversation data with attachments
     const fetchConversationData = async (
@@ -296,7 +348,8 @@ const ChatWindow = ({
                 "continue_session",
                 "sessionId",
                 `${session_id}`,
-                imageBase64
+                imageBase64,
+                csvFile
             );
         }
     }, [isConnected, session_id]);
@@ -430,6 +483,14 @@ const ChatWindow = ({
                                             src={message.image}
                                         />
                                     )}
+                                    {message.csv && (
+                                            <div
+                                                className="p-3 text-text-200 self-end rounded-2xl bg-linear-to-r from-teal-900 to-teal-600"
+                                            >
+                                                <p>csv file attached</p>
+                                                <a className="text-sm underline font-bold" href={`${API_URL}/attachment/${message.csv}`}>open file</a>
+                                            </div>
+                                    )}
                                     <div
                                         className="bg-background-300 p-5 w-3/5 rounded-2xl self-end"
                                         dangerouslySetInnerHTML={{
@@ -476,9 +537,28 @@ const ChatWindow = ({
                     </button>
                     <div className="w-full">
                         {imageBase64 && (
-                            <div className="flex justify-between gap-3 absolute -translate-y-[120%] right-0 p-3 bg-teal-800 rounded-xl">
+                            <div className="flex justify-between gap-3 absolute -translate-y-[120%] right-0 p-3 bg-linear-to-r from-teal-900 to-teal-600  rounded-xl">
                                 <p>Image attached</p>
-                                <div className="text-red-600/70 font-extrabold cursor-pointer" onClick={handleFileRemove}>X</div>
+                                <div
+                                    className="text-red-600/70 font-extrabold cursor-pointer"
+                                    onClick={handleFileRemove}
+                                >
+                                    X
+                                </div>
+                            </div>
+                        )}
+                        {csvFile && (
+                            <div className="flex itemce justify-between gap-5 absolute -translate-y-[120%] right-0 p-3 bg-linear-to-r from-teal-900 to-teal-600 rounded-xl">
+                                <div className="">
+                                    <h4 className="text-sm">csv file: </h4>
+                                    <p>{csvFile == 'uploading' ? 'uploading' : 'csv file attached'}</p>
+                                </div>
+                                <div
+                                    className="text-red-600/70 font-extrabold cursor-pointer"
+                                    onClick={handleFileRemove}
+                                >
+                                    X
+                                </div>
                             </div>
                         )}
                         <input
@@ -493,7 +573,7 @@ const ChatWindow = ({
                     <button
                         className="bg-primary-800 p-4 rounded-md hover:bg-primary-700 disabled:bg-background-500 disabled:hover:bg-background-500 cursor-pointer"
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || (csvFile == 'uploading')}
                     >
                         Send
                     </button>
