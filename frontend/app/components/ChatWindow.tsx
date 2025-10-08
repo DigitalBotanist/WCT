@@ -30,7 +30,7 @@ const ChatWindow = ({
     const [messages, setMessages] = useState<Message[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null); // file input field
     const [imageBase64, setImageBase64] = useState<string | null>(null);
-    const { isConnected, sendMessage, disconnect, connect, sessionId } =
+    const { isConnected, sendMessage, disconnect, connect, sessionId, loading } =
         useWebSocket(messages, setMessages);
 
     const handleDescribe = () => {
@@ -54,6 +54,10 @@ const ChatWindow = ({
     // sending message through the socket
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (loading) {
+            return
+        }
 
         // if message if empty don't send
         if (message == "") {
@@ -436,8 +440,9 @@ const ChatWindow = ({
                         className="w-full px-4 py-4 rounded-md border-2 border-background-600 focus:outline-1 focus:outline-primary-700"
                     />
                     <button
-                        className="bg-primary-800 p-4 rounded-md"
+                        className="bg-primary-800 p-4 rounded-md hover:bg-primary-700 disabled:bg-background-500 disabled:hover:bg-background-500 cursor-pointer"
                         type="submit"
+                        disabled={loading}
                     >
                         Send
                     </button>

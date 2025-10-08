@@ -233,7 +233,10 @@ async def websocket_endpoint(
         logging.debug(f"response: {message}")
         conversation_manager.save_message(session_id=session_id, content=message.get("content"))
         await websocket.send_json(message)
-
+    async def send_status(message):
+        logging.debug(f"sending status: {message}")
+        logging.debug(f"response: {message}")
+        await websocket.send_json(message)
     async def send_title(message):
         logging.debug(f"sending title: {message}")
         session_manager.save_title(session_id=session_id, title=message.get("content"))
@@ -262,6 +265,7 @@ async def websocket_endpoint(
     orchestrator.register_response_handler("message", send_message)
     orchestrator.register_response_handler("title", send_title)
     orchestrator.register_response_handler("animal", send_animal)
+    orchestrator.register_response_handler("status", send_status)
 
     # check if the token exist 
     if not token:
@@ -329,6 +333,10 @@ async def websocket_endpoint(
                     await websocket.send_json({
                         "type": "connection_status",
                         "content": "session_validated",
+                    }) 
+                    await websocket.send_json({
+                        "type": "status",
+                        "content": "done",
                     }) 
                 websocket.state.session_id = session_id
                 continue

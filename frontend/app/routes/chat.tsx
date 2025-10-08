@@ -2,7 +2,7 @@ import { useAuth } from "~/contexts/AuthContext";
 import type { Route } from "./+types/chat";
 import { useNavigate } from "react-router";
 import { useEffect } from "react";
-import Dashboard from "app/components/Dashboard";
+import Dashboard from "~/components/Dashboard";
 
 
 export function meta(args: Route.MetaArgs) {
@@ -18,7 +18,7 @@ export default function Chat() {
 
     useEffect(() => {
         if (userState?.token == null) {
-            navigate("/");
+            navigate("/auth");
         }
     }, [userState?.token, navigate]);
 

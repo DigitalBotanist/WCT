@@ -8,6 +8,7 @@ import type WebSocketMessage  from "~/interfaces/WebSocketMessage";
 export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<React.SetStateAction<WebSocketMessage[]>>) => {
     const { userState } = useAuth();
     const [isConnected, setIsConnected] = useState(false);
+    const [loading, setLoading] = useState(false)
     const sessionId = useRef<null | string>(null);
     const ws = useRef<WebSocket | null>(null);
 
@@ -45,6 +46,10 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
 
                 if (data.action == 'connection_status') {
                     setIsConnected(true)
+                }
+
+                if (data.type == 'status' && data.content == 'done') {
+                    setLoading(false) 
                 }
 
                 console.log(data);
@@ -119,6 +124,7 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
             if (ws.current && isConnected && ws.current.readyState === WebSocket.OPEN) {
                 console.log("sending.......................", msg)
                 ws.current.send(JSON.stringify(msg));
+                setLoading(true)
                 setMessages((prev) => [...prev, msg]);
             }
         },
@@ -138,5 +144,6 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
         disconnect,
         connect,
         sessionId,
+        loading
     };
 };

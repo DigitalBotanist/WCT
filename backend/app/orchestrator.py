@@ -254,6 +254,11 @@ class Orchestrator:
                             'content': 'animal',
                             'animal': previous_node_result.content, 
                         }
+                    elif node.response_type == 'status':
+                        response_data = {
+                            'type': node.response_type,
+                            'content': node.response,
+                        }
                     elif previous_node_result.success:
                         response_data = {
                             'type': node.response_type or 'message',
@@ -336,12 +341,18 @@ class Orchestrator:
         previous_result = state.get_previous_result()
         if not task_template:
             return {}
-        
+
+        session_context = state.context
+
+        session_context.pop('image', None)
+        session_context.pop('initial_message', None)
+
+        print(session_context) 
         context = {
             'user_input': state.user_input or '',
             'image': state.image or '',
             'prev_result_content': previous_result.content if previous_result else '',
-            'context': state.context
+            'context': session_context
         }
 
         task_data = {}
@@ -503,6 +514,12 @@ class Orchestrator:
             type=NodeType.RESPONSE,
             response_type="title"
         )
+        done_response_node = Node(
+            node_id="done_response", 
+            type=NodeType.RESPONSE,
+            response_type="status",
+            response="done"
+        )
         end_node = Node(
             node_id="end",
             type=NodeType.END
@@ -522,6 +539,7 @@ class Orchestrator:
         graph.add_node(should_title_node)
         graph.add_node(store_title_node)
         graph.add_node(title_response_node)
+        graph.add_node(done_response_node)
         graph.add_node(end_node)
         
         # Define edges
@@ -534,12 +552,13 @@ class Orchestrator:
         graph.add_edge("animal_info_response", "summary_llm")
         graph.add_edge("summary_llm", "response")
         graph.add_edge("general_llm", "response")
-        graph.add_edge("greeting", "end")
+        graph.add_edge("greeting", "done_response")
         graph.add_edge("response", "should_title")
         graph.add_edge("should_title", "title_generate")
-        graph.add_edge("should_title", "end")
+        graph.add_edge("should_title", "done_response")
         graph.add_edge("title_generate", "store_title")
         graph.add_edge("store_title", "title_response")
-        graph.add_edge("title_response", "end")
+        graph.add_edge("title_response", "done_response")
+        graph.add_edge("done_response", "end")
         
         return graph
