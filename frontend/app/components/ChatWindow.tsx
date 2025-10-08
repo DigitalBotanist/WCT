@@ -19,7 +19,7 @@ const ChatWindow = ({
     setCurrentTitle,
 }: {
     session_id: string | undefined;
-    context: AnimalInfo | null
+    context: AnimalInfo | null;
     setCurrentTitle: (title: string) => void;
 }) => {
     const navigate = useNavigate();
@@ -30,33 +30,58 @@ const ChatWindow = ({
     const [messages, setMessages] = useState<Message[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null); // file input field
     const [imageBase64, setImageBase64] = useState<string | null>(null);
-    const { isConnected, sendMessage, disconnect, connect, sessionId, loading } =
-        useWebSocket(messages, setMessages);
+    const [csvBase64, setCsvBase64] = useState<string | null>(null)
+    const {
+        isConnected,
+        sendMessage,
+        disconnect,
+        connect,
+        sessionId,
+        loading,
+    } = useWebSocket(messages, setMessages);
 
     const handleDescribe = () => {
-        sendMessage("user_request", "message", "Provide a description", imageBase64);
-    }
-
+        sendMessage(
+            "user_request",
+            "message",
+            "Provide a description",
+            imageBase64
+        );
+    };
 
     const handleAnalyzeMigrationPattern = () => {
-        sendMessage("user_request", "message", "Analyze the migration pattern", imageBase64);
-    }
-        
+        sendMessage(
+            "user_request",
+            "message",
+            "Analyze the migration pattern",
+            imageBase64
+        );
+    };
 
     const handleShowMigrationPattern = () => {
-        sendMessage("user_request", "message", "Show migration pattern", imageBase64);
-    }
-        
+        sendMessage(
+            "user_request",
+            "message",
+            "Show migration pattern",
+            imageBase64
+        );
+    };
+
     const handleTreatLevels = () => {
-        sendMessage("user_request", "message", "show threat levels", imageBase64);
-    }
-        
+        sendMessage(
+            "user_request",
+            "message",
+            "show threat levels",
+            imageBase64
+        );
+    };
+
     // sending message through the socket
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
 
         if (loading) {
-            return
+            return;
         }
 
         // if message if empty don't send
@@ -106,6 +131,10 @@ const ChatWindow = ({
         reader.readAsDataURL(file);
     };
 
+    const handleFileRemove = () => {
+        setImageBase64(null)
+    }
+
     // fetch conversation data with attachments
     const fetchConversationData = async (
         sessionId: string
@@ -134,7 +163,6 @@ const ChatWindow = ({
                 image: msg.image,
                 role: msg.role,
             }));
-
         } catch (err: any) {
             console.log(err.message);
         }
@@ -155,16 +183,16 @@ const ChatWindow = ({
     // check context
     useEffect(() => {
         if (!context) {
-            setAnimal(null)
-            return
-        };
-        
-        setAnimal(context)
-        console.log("context", context.image)
+            setAnimal(null);
+            return;
+        }
+
+        setAnimal(context);
+        console.log("context", context.image);
         if (context.image) {
             fetchAnimalImage(context.image);
         }
-    }, [context]) 
+    }, [context]);
 
     // check for title message
     useEffect(() => {
@@ -365,10 +393,22 @@ const ChatWindow = ({
                         </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                        <AnimalInfoButton text="Describe" handleClick={handleDescribe}/>
-                        <AnimalInfoButton text="Analyze migration" handleClick={handleAnalyzeMigrationPattern}/>
-                        <AnimalInfoButton text="Show migration pattern" handleClick={handleShowMigrationPattern}/>
-                        <AnimalInfoButton text="Treat levels" handleClick={handleTreatLevels}/>
+                        <AnimalInfoButton
+                            text="Describe"
+                            handleClick={handleDescribe}
+                        />
+                        <AnimalInfoButton
+                            text="Analyze migration"
+                            handleClick={handleAnalyzeMigrationPattern}
+                        />
+                        <AnimalInfoButton
+                            text="Show migration pattern"
+                            handleClick={handleShowMigrationPattern}
+                        />
+                        <AnimalInfoButton
+                            text="Treat levels"
+                            handleClick={handleTreatLevels}
+                        />
                         <button className="bg-red-900 p-3 rounded-lg">
                             Describe
                         </button>
@@ -415,7 +455,10 @@ const ChatWindow = ({
                             )
                         )}
                 </div>
-                <form className="flex gap-2 w-19/20 mb-4" onSubmit={handleSend}>
+                <form
+                    className="relative flex gap-2 w-19/20 mb-4"
+                    onSubmit={handleSend}
+                >
                     {/* Hidden file input */}
                     <input
                         type="file"
@@ -431,14 +474,22 @@ const ChatWindow = ({
                     >
                         Add
                     </button>
-                    <input
-                        type="text"
-                        name="message"
-                        id="message"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        className="w-full px-4 py-4 rounded-md border-2 border-background-600 focus:outline-1 focus:outline-primary-700"
-                    />
+                    <div className="w-full">
+                        {imageBase64 && (
+                            <div className="flex justify-between gap-3 absolute -translate-y-[120%] right-0 p-3 bg-teal-800 rounded-xl">
+                                <p>Image attached</p>
+                                <div className="text-red-600/70 font-extrabold cursor-pointer" onClick={handleFileRemove}>X</div>
+                            </div>
+                        )}
+                        <input
+                            type="text"
+                            name="message"
+                            id="message"
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            className="w-full px-4 py-4 rounded-md border-2 border-background-600 focus:outline-1 focus:outline-primary-700"
+                        />
+                    </div>
                     <button
                         className="bg-primary-800 p-4 rounded-md hover:bg-primary-700 disabled:bg-background-500 disabled:hover:bg-background-500 cursor-pointer"
                         type="submit"
