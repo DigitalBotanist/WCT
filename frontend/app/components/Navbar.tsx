@@ -13,7 +13,7 @@ function Navbar() {
         </div>
 
         <div className="flex mt-4 sm:mt-0 text-white">
-          <Link className="px-4" to="/features">Home</Link>
+          <Link className="px-4" to="/">Home</Link>
           <Link className="px-4" to="/pricing">Pricing</Link>
           <Link className="px-4" to="/about-us">About us</Link>
         </div>
