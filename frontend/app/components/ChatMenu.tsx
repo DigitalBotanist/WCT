@@ -19,7 +19,7 @@ const ChatMenu = ({
     handleDeleteChatSession: (session_id: string) => void;
 }) => {
     const navigate = useNavigate();
-    const { userState } = useAuth();
+    const { userState, dispatch } = useAuth();
 
     const handleSessionClick = (session_id: string) => {
         setCurrentSession(session_id);
@@ -71,7 +71,14 @@ const ChatMenu = ({
             </div>
             <div className="w-full p-2 bg-background-600 flex justify-between items-center">
                 <div className="">{userState.user}</div>
-                <div className="cursor-pointer hover:bg-red-500/20 rounded-sm p-3">
+                <div
+                    className="cursor-pointer hover:bg-red-500/20 rounded-sm p-3"
+                    onClick={() =>
+                        dispatch({
+                            type: "LOGOUT",
+                        })
+                }
+                >
                     <img src={logout} alt="" />
                 </div>
             </div>

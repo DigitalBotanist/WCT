@@ -4,7 +4,8 @@ import os
 import logging
 
 from app.agents.image_classifer_agent import ImageClassifierAgent
-from app.agents.gemini_agent import GeminiLLM 
+from app.agents.gemini_agent import GeminiLLM
+from app.agents.gemini_agent_2 import GeminiLLM2
 from app.models.agent import Agent
 from app.models.graph import NodeType, Node, GraphState, Result
 
@@ -390,6 +391,7 @@ class Orchestrator:
             
             # General LLM agent
             agents["general_llm_agent"] =  GeminiLLM()
+            agents["general_llm_agent_2"] =  GeminiLLM2()
             
         except Exception as e:
             raise RuntimeError(f"Failed to initialize agents: {e}")
@@ -459,20 +461,20 @@ class Orchestrator:
             researching....
             research data: {prev_result_content}
 
-            if there not enough data do research and generate the bot reply(summary).
+            if there not enough data do research and generate the bot reply(summary). return only the reply.
             """
         )
         general_llm_node = Node(
             node_id="general_llm",
             type=NodeType.AGENT,
-            agent_name="general_llm_agent", 
+            agent_name="general_llm_agent_2", 
             task_template="""
             context: {context}
             user request: {user_input}
             
-            bot:
+            bot: (bot reply)
 
-            if there not enough data do research and generate the bot reply.
+            if there not enough data do research yourself and generate the bot reply. and return only the reply
             """
         )
         response_node = Node(
@@ -483,7 +485,7 @@ class Orchestrator:
         title_agent_node = Node(
             node_id="title_generate",
             type=NodeType.AGENT,
-            agent_name="general_llm_agent",
+            agent_name="general_llm_agent_2",
             task_template="generate small title for: {prev_result_content}. return ONLY the title please"
         )
         should_title_node = Node(
