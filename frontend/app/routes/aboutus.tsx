@@ -1,3 +1,4 @@
+import AboutUs from "~/components/AboutusPage";
 import type { Route } from "./+types/aboutus";
 
 export function meta(args: Route.MetaArgs) {
@@ -9,7 +10,7 @@ export function meta(args: Route.MetaArgs) {
 export default function aboutus() {
     return (
         <div className="">
-           aboutus 
+           <AboutUs/> 
         </div>
     );
 }
