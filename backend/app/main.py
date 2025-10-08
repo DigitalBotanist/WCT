@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Dict
 import httpx
 import asyncio
 import base64
@@ -12,6 +13,7 @@ from io import BytesIO
 from PIL import Image
 import logging
 import colorlog
+import json
 
 from app.database import Base, engine, SessionLocal, get_db
 from app.models.database_models import User, Base
@@ -149,6 +151,27 @@ async def get_all_conversations(
 
     return [message.as_dict() for message in messages]
 
+@app.delete("/chat_session/{session_id}")
+async def get_all_conversations(
+    session_id, 
+    token: str = Depends(oauth2_scheme), 
+    user_manager: UserManager = Depends(UserManager.get_user_manager),
+    session_manager: SessionManager = Depends(get_session_manager)
+    ):
+    """
+    get all session conversations
+    """
+    user = await user_manager.verify_token(token=token)
+    if not user: 
+        raise HTTPException(status_code=403, detail="Token not found. permission denied")
+
+
+    if not session_manager.delete_chat_session(session_id=session_id):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    return  {"message": "Chat session deleted successfully."}
+
+
 @app.get("/chat_sessions")
 async def get_all_sessions(
     token: str = Depends(oauth2_scheme), 
@@ -179,6 +202,19 @@ async def get_attachment(
         raise HTTPException(status_code=403, detail="Token not found. permission denied")
     return conversation_manager.get_attachment(attachment_id=attachment_id) 
 
+@app.get("/animal_img/{filename}")
+async def get_attachment(
+    filename: str,
+    token: str = Depends(oauth2_scheme), 
+    user_manager: UserManager = Depends(UserManager.get_user_manager),
+    conversation_manager: ConversationManager =Depends(ConversationManager.get_conversation_manager),
+    ):
+
+    user = await user_manager.verify_token(token=token)
+    if not user: 
+        raise HTTPException(status_code=403, detail="Token not found. permission denied")
+    return conversation_manager.get_image(filename=filename) 
+
 @app.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket, 
@@ -202,12 +238,30 @@ async def websocket_endpoint(
         logging.debug(f"sending title: {message}")
         session_manager.save_title(session_id=session_id, title=message.get("content"))
         await websocket.send_json(message)
-        
+
+    async def send_animal(message: Dict):
+        logging.debug(f"sending animal: {message}")
+        content = message.get("animal")
+
+        raw_json = content.replace("```json\n", "").replace("\n```", "")
+
+        try:
+            context = json.loads(raw_json)
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to parse JSON: {e}")
+
+        img_name = image.split("/")[-1]
+        context['image'] = img_name
+        message['animal'] = context
+        session_manager.save_context(session_id=session_id,context=context)
+        await websocket.send_json(message)
+         
     await websocket.accept()    # accept the connection 
     logging.info(f"web socket is connected")
 
     orchestrator.register_response_handler("message", send_message)
     orchestrator.register_response_handler("title", send_title)
+    orchestrator.register_response_handler("animal", send_animal)
 
     # check if the token exist 
     if not token:
@@ -235,13 +289,14 @@ async def websocket_endpoint(
         await asyncio.sleep(0.1)
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return 
-    
+
     try:
         while True:
             logging.info(f"socket listenting....")
             data = await websocket.receive_json()
             logging.info(f"got socket message")
             logging.info(f"socket sessionid: {data.get('sessionId')}")
+            logging.debug(f"message: {data}")
 
             if data.get("action") == "create_session":
                 session_id = await session_manager.create_session(user.id, initial_context={
@@ -276,9 +331,17 @@ async def websocket_endpoint(
                         "content": "session_validated",
                     }) 
                 websocket.state.session_id = session_id
-
-
-            session_id =  data.get("sessionId") or websocket.state.get("session_id") 
+                continue
+            try: 
+                session_id =  data.get("sessionId") or websocket.state.get("session_id") 
+            except err: 
+                await websocket.send_json({
+                        "type": "error",
+                        "content": "there is no session with session id"
+                    })
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            
+            session = session_manager.get_session(session_id=session_id)
             message = conversation_manager.save_message(session_id=session_id, content=data.get("content"), role='user')  # save messages to the database 
 
             logging.debug(f"image in the user request: {data.get('image') is not None}")
@@ -307,6 +370,14 @@ async def websocket_endpoint(
             state = GraphState(user_input=data, intent=intent, user_id=user.id)
             if image:
                 state.image = image
+
+            if session.title: 
+                logging.debug(f"session title: {session.title}")
+                state.title = session.title
+            
+            if session.context: 
+                logging.debug(f"session context: {session.context}")
+                state.context = session.context
 
             await orchestrator.run(state=state) 
     except WebSocketDisconnect:

@@ -56,6 +56,7 @@ class ConversationManager:
             attachment = Attachments(message_id=message_id, path=attachment_path, type=type)
             self.db_session.add(attachment)
             self.db_session.commit()
+            
 
     def get_attachment(self, attachment_id):
         logging.debug("getting attachment")
@@ -64,3 +65,9 @@ class ConversationManager:
         if (attachment.type == 'img'):
             img = image_to_base64(attachment.path)
             return img
+
+    def get_image(self, filename):
+        logging.debug("getting image")
+        filepath = f'uploads/img/{filename}' 
+        img = image_to_base64(filepath)
+        return img
