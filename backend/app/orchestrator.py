@@ -4,6 +4,7 @@ import os
 import logging
 
 from app.agents.image_classifer_agent import ImageClassifierAgent
+from app.agents.migration_analyzer_agent import MigrationAnalyzerAgent
 from app.agents.gemini_agent import GeminiLLM
 from app.agents.gemini_agent_2 import GeminiLLM2
 from app.models.agent import Agent
@@ -12,6 +13,7 @@ from app.models.graph import NodeType, Node, GraphState, Result
 load_dotenv()
 
 IMAGE_API_URL = os.getenv("IMAGE_API_URL")
+MIGRATION_API_URL = os.getenv("MIGRATION_API_URL")
 
 
 class WorkflowGraph:
@@ -159,6 +161,8 @@ class Orchestrator:
             return 'greeting'
         elif intent == 'animal_classification':
             return 'classification_agent'
+        elif intent == 'migration_analyze':
+            return 'migration_analyzer'
         elif intent == 'unkown': 
             return 'general_llm'
         else:
@@ -262,12 +266,12 @@ class Orchestrator:
                     elif previous_node_result.success:
                         response_data = {
                             'type': node.response_type or 'message',
-                            'content': previous_node_result.content, 
+                            'content': previous_node_result.content or node.response, 
                         }
                     else:
                         response_data = {
                             'type': node.response_type or 'error',
-                            'content': previous_node_result.content, 
+                            'content': previous_node_result.content or node.response, 
                         }
                 else:
                     logging.error("response node received nothing")
@@ -346,11 +350,11 @@ class Orchestrator:
 
         session_context.pop('image', None)
         session_context.pop('initial_message', None)
-
-        print(session_context) 
+        print(state.csv.id, state.csv.path)
         context = {
             'user_input': state.user_input or '',
             'image': state.image or '',
+            'csv': state.csv or '',
             'prev_result_content': previous_result.content if previous_result else '',
             'context': session_context
         }
@@ -359,8 +363,11 @@ class Orchestrator:
         # Pattern 1: Just image - {"image": "path/to/image.jpg"}
         if task_template.strip() == "{image}" and context.get('image'):
             task_data['image'] = context['image']
-        
-        # pattern 2: just prompt
+
+        # Pattern 2: Just csv - {"csv": Attachment}
+        if task_template.strip() == "{csv}":
+            task_data['csv'] = state.csv
+        # pattern: just prompt
         else: 
             formatted_text = task_template
             for key, value in context.items():
@@ -403,6 +410,9 @@ class Orchestrator:
             # General LLM agent
             agents["general_llm_agent"] =  GeminiLLM()
             agents["general_llm_agent_2"] =  GeminiLLM2()
+            agents["migration_analyzer_agent"] = MigrationAnalyzerAgent(
+                url=MIGRATION_API_URL
+            )
             
         except Exception as e:
             raise RuntimeError(f"Failed to initialize agents: {e}")
@@ -459,6 +469,18 @@ class Orchestrator:
             node_id="animal_info_response",
             type=NodeType.RESPONSE,
             response_type="animal", 
+        )
+        migration_analyzer_agent_node = Node (
+            node_id="migration_analyzer", 
+            type=NodeType.AGENT,
+            agent_name="migration_analyzer_agent",
+            task_template="{csv}"
+        )
+        migration_analyzer_response_node = Node(
+            node_id="migration_analyzer_response",
+            type=NodeType.RESPONSE,
+            response_type="message",
+            response="Error" 
         )
         summary_llm_node = Node(
             node_id="summary_llm",
@@ -532,6 +554,8 @@ class Orchestrator:
         graph.add_node(classification_agent_node)
         graph.add_node(animal_info_node)
         graph.add_node(animal_info_response_node)
+        graph.add_node(migration_analyzer_agent_node)
+        graph.add_node(migration_analyzer_response_node)
         graph.add_node(summary_llm_node)
         graph.add_node(general_llm_node)
         graph.add_node(response_node)
@@ -546,9 +570,12 @@ class Orchestrator:
         graph.add_edge("start", "intent_detection")
         graph.add_edge("intent_detection", "greeting")
         graph.add_edge("intent_detection", "classification_agent")
+        graph.add_edge("intent_detection", "migration_analyzer")
         graph.add_edge("intent_detection", "general_llm")
         graph.add_edge("classification_agent", "animal_info") 
         graph.add_edge("animal_info", "animal_info_response")
+        graph.add_edge("migration_analyzer", "migration_analyzer_response")
+        graph.add_edge("migration_analyzer_response", "done_response")
         graph.add_edge("animal_info_response", "summary_llm")
         graph.add_edge("summary_llm", "response")
         graph.add_edge("general_llm", "response")

@@ -80,6 +80,8 @@ class ConversationManager:
         attachment = Attachments(id=temp.id, message_id=message_id, path=temp.path, type=temp.type)
         self.db_session.add(attachment)
         self.db_session.commit()
+
+        return attachment
         
     def get_attachment(self, attachment_id):
         logging.debug("getting attachment")

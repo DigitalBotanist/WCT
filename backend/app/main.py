@@ -385,8 +385,7 @@ async def websocket_endpoint(
             
             # checking for csv
             if data.get('csv'):
-                conversation_manager.save_csv_attachment(message_id=message.id, attachment_id=data.get('csv'))
-                csv = data.get('csv')
+                csv = conversation_manager.save_csv_attachment(message_id=message.id, attachment_id=data.get('csv'))
             else: 
                 csv = None
 
