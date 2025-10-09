@@ -3,11 +3,17 @@ import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useAuth } from "~/contexts/AuthContext";
 import type Message from "~/interfaces/Message";
 
-import type WebSocketMessage  from "~/interfaces/WebSocketMessage";
+import type WebSocketMessage from "~/interfaces/WebSocketMessage";
 
-export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<React.SetStateAction<WebSocketMessage[]>>) => {
+const API_URL = import.meta.env.VITE_API_URL;
+
+export const useWebSocket = (
+    messages: Message[],
+    setMessages: React.Dispatch<React.SetStateAction<WebSocketMessage[]>>
+) => {
     const { userState } = useAuth();
     const [isConnected, setIsConnected] = useState(false);
+    const [loading, setLoading] = useState(false);
     const sessionId = useRef<null | string>(null);
     const ws = useRef<WebSocket | null>(null);
 
@@ -21,7 +27,7 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
             );
 
             ws.current.onopen = () => {
-                setIsConnected(true);
+                setIsConnected(false);
                 setMessages((prev) => [
                     ...prev,
                     {
@@ -29,18 +35,54 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
                         content: "Connected to chat",
                     },
                 ]);
-                console.log("socket connected")
+                setIsConnected(true);
+                console.log("socket connected");
             };
 
-            ws.current.onmessage = (event) => {
+            ws.current.onmessage = async(event) => {
                 const data: WebSocketMessage = JSON.parse(event.data);
 
+                console.log(data);
                 if (data.type == "sessionId") {
-                    console.log("setting session id", data.content)
-                    sessionId.current = data.content
-                    return 
+                    console.log("setting session id", data.content);
+                    sessionId.current = data.content;
+                    return;
                 }
 
+                if (data.action == "connection_status") {
+                    setIsConnected(true);
+                }
+
+                if (data.type == "status" && data.content == "done") {
+                    setLoading(false);
+                }
+
+                if (data.attachments) {
+                    await Promise.all(
+                        data.attachments.map(async (attachment) => {
+                            try {
+                                const attachmentResponse = await fetch(
+                                    `${API_URL}/attachment/${attachment.id}`,
+                                    {
+                                        headers: {
+                                            Authorization: `Bearer ${userState.token}`,
+                                        },
+                                    }
+                                );
+                                const attachmentData = await attachmentResponse.json();
+                                if (attachment.type == "img") {
+                                    data.image = attachmentData; // add image data to the message.image
+                                }
+                                console.log(attachmentData)
+                                if (attachment.type == "migration") {
+                                    data.migrationData = attachmentData;
+                                }
+                            } catch (error) {
+                                console.error("Error fetching attachment:", error);
+                            }
+                        })
+                    );
+                }
                 console.log(data);
                 setMessages((prev) => [...prev, data]);
             };
@@ -84,9 +126,15 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
             action: string,
             type: "message" | "sessionId",
             content: string,
-            image: string | null
+            image: string | null,
+            csv: string | null
         ) => {
-            console.log("session id in sendmessage: ", sessionId.current, "action:", action)
+            console.log(
+                "session id in sendmessage: ",
+                sessionId.current,
+                "action:",
+                action
+            );
             const msg: WebSocketMessage = sessionId.current
                 ? image
                     ? {
@@ -97,26 +145,40 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
                           sessionId: sessionId.current,
                           image,
                       }
-                    : {
-                          action: action,
-                          type: type,
-                          content: content,
-                          role: "user",
-                          sessionId: sessionId.current,
-                      }
+                    : csv
+                      ? {
+                            action: action,
+                            type: type,
+                            content: content,
+                            role: "user",
+                            sessionId: sessionId.current,
+                            csv,
+                        }
+                      : {
+                            action: action,
+                            type: type,
+                            content: content,
+                            role: "user",
+                            sessionId: sessionId.current,
+                        }
                 : {
                       action: action,
                       type: type,
                       content: content,
                       role: "user",
                   };
-            if (ws.current && isConnected) {
-                console.log("sending.......................", msg)
+            if (
+                ws.current &&
+                isConnected &&
+                ws.current.readyState === WebSocket.OPEN
+            ) {
+                console.log("sending.......................", msg);
                 ws.current.send(JSON.stringify(msg));
+                setLoading(true);
                 setMessages((prev) => [...prev, msg]);
             }
         },
-        [isConnected]
+        [isConnected, ws.current]
     );
 
     // Auto-connect on mount and when dependencies change
@@ -131,5 +193,6 @@ export const useWebSocket = (messages: Message[], setMessages: React.Dispatch<Re
         disconnect,
         connect,
         sessionId,
+        loading,
     };
 };

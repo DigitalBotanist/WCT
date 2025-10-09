@@ -20,6 +20,7 @@ type AuthAction =
 const initialState: AuthState = { user: null, token: null, loading: false };
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
+    console.log(action.type)
     switch (action.type) {
         case "LOGIN":
             localStorage.setItem(

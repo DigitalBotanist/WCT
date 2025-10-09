@@ -4,8 +4,8 @@ from sqlalchemy import desc
 import logging
 
 from app.database import get_db
-from app.models.database_models import ConversationMessage, Attachments
-from app.utils import image_to_base64
+from app.models.database_models import ConversationMessage, Attachments, TempAttachments
+from app.utils import image_to_base64, get_json
 
 class ConversationManager:
     _instance = None
@@ -49,6 +49,18 @@ class ConversationManager:
 
 
         return new_message
+
+    def get_message(self, message_id): 
+        """
+        save the system messages in the database 
+        """
+
+        logging.debug(f"getting message: {message_id}")
+        message =self.db_session.query(ConversationMessage).\
+            options(joinedload(ConversationMessage.attachments)).\
+            filter(ConversationMessage.id == message_id).first()
+
+        return message
     
     def save_attachments(self, message_id, attachemnts_paths: list, type):
         logging.debug("saving attachment")
@@ -56,7 +68,37 @@ class ConversationManager:
             attachment = Attachments(message_id=message_id, path=attachment_path, type=type)
             self.db_session.add(attachment)
             self.db_session.commit()
+            return attachment
 
+    
+    def save_temp_csv(self, user_id, filepath): 
+        logging.debug("saving temp attachment")
+        attachment = TempAttachments(path=filepath, type="csv", user_id=user_id)
+        self.db_session.add(attachment)
+        self.db_session.commit()
+        self.db_session.refresh(attachment)
+
+        return attachment 
+
+    def save_csv_attachment(self, message_id, attachment_id):
+        logging.debug("getting csv from the temp attachemtns")
+        temp = self.db_session.query(TempAttachments).filter(TempAttachments.id == attachment_id).first()
+
+        if not temp: 
+            return None
+
+        logging.debug(f"got attachment : {temp}")
+
+
+        logging.debug("saving the attachment")
+        attachment = Attachments(id=temp.id, message_id=message_id, path=temp.path, type=temp.type)
+        self.db_session.add(attachment)
+        self.db_session.commit()
+
+        return attachment
+
+    
+        
     def get_attachment(self, attachment_id):
         logging.debug("getting attachment")
         attachment = self.db_session.query(Attachments).filter(Attachments.id == attachment_id).first()
@@ -64,3 +106,13 @@ class ConversationManager:
         if (attachment.type == 'img'):
             img = image_to_base64(attachment.path)
             return img
+        
+        if (attachment.type == 'migration'):
+            data = get_json(attachment.path)
+            return data
+
+    def get_image(self, filename):
+        logging.debug("getting image")
+        filepath = f'uploads/img/{filename}' 
+        img = image_to_base64(filepath)
+        return img

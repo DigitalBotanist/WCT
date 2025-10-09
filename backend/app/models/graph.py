@@ -46,7 +46,8 @@ class GraphState:
     
     # Dynamic data
     image: Optional[str] = None
-    raw_data: Dict[str, Any] = field(default_factory=dict)
+    csv: Optional[str] = None
+    context: Dict[str, Any] = field(default_factory=dict)
     
     # Execution data
     results: Dict[str, Any] = field(default_factory=dict)

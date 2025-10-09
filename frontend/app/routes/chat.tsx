@@ -2,8 +2,7 @@ import { useAuth } from "~/contexts/AuthContext";
 import type { Route } from "./+types/chat";
 import { useNavigate } from "react-router";
 import { useEffect } from "react";
-import ChatWindow from "~/components/ChatWindow";
-import ChatMenu from "~/components/ChatMenu";
+import Dashboard from "~/components/Dashboard";
 
 
 export function meta(args: Route.MetaArgs) {
@@ -19,14 +18,13 @@ export default function Chat() {
 
     useEffect(() => {
         if (userState?.token == null) {
-            navigate("/");
+            navigate("/auth");
         }
     }, [userState?.token, navigate]);
 
     return (
         <div className="w-[100vw] h-[100vh] flex">
-            <ChatMenu/>
-            <ChatWindow />
+             <Dashboard/>
         </div>
     );
 }

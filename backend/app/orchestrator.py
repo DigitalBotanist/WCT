@@ -4,13 +4,16 @@ import os
 import logging
 
 from app.agents.image_classifer_agent import ImageClassifierAgent
-from app.agents.gemini_agent import GeminiLLM 
+from app.agents.migration_analyzer_agent import MigrationAnalyzerAgent
+from app.agents.gemini_agent import GeminiLLM
+from app.agents.gemini_agent_2 import GeminiLLM2
 from app.models.agent import Agent
 from app.models.graph import NodeType, Node, GraphState, Result
 
 load_dotenv()
 
 IMAGE_API_URL = os.getenv("IMAGE_API_URL")
+MIGRATION_API_URL = os.getenv("MIGRATION_API_URL")
 
 
 class WorkflowGraph:
@@ -158,6 +161,8 @@ class Orchestrator:
             return 'greeting'
         elif intent == 'animal_classification':
             return 'classification_agent'
+        elif intent == 'migration_analyze':
+            return 'migration_analyzer'
         elif intent == 'unkown': 
             return 'general_llm'
         else:
@@ -227,8 +232,10 @@ class Orchestrator:
                 # do the response 
                 logging.debug(f"response node: {node.node_id}")
                 previous_node_result = state.get_previous_result()
-                logging.debug(f"previous response: {previous_node_result}")
+
+                # logging.debug(f"previous response: {previous_node_result}")
                 logging.debug(f"response data type: {type(previous_node_result)}")
+
                 if not previous_node_result:
                     response_data = {
                         'type': node.response_type or 'message',
@@ -245,15 +252,33 @@ class Orchestrator:
                         'content': previous_node_result
                     }
                 elif isinstance(previous_node_result, Result): 
-                    if previous_node_result.success:
+                    if node.response_type == 'animal':
                         response_data = {
                             'type': node.response_type or 'message',
-                            'content': previous_node_result.content, 
+                            'content': 'animal',
+                            'animal': previous_node_result.content, 
+                        }
+                    elif node.node_id == 'migration_analyzer_response' and previous_node_result.success:
+                        response_data = {
+                            'type': node.response_type or 'message',
+                            'content': node.response,
+                            'data': previous_node_result.content
+                        }
+                        print(response_data.get("content"))
+                    elif node.response_type == 'status':
+                        response_data = {
+                            'type': node.response_type,
+                            'content': node.response,
+                        }
+                    elif previous_node_result.success:
+                        response_data = {
+                            'type': node.response_type or 'message',
+                            'content': previous_node_result.content or node.response, 
                         }
                     else:
                         response_data = {
                             'type': node.response_type or 'error',
-                            'content': previous_node_result.content, 
+                            'content': previous_node_result.content or node.response, 
                         }
                 else:
                     logging.error("response node received nothing")
@@ -262,7 +287,7 @@ class Orchestrator:
                         'content': "error occured", 
                     }
 
-                logging.debug(f"response_data: {response_data}")
+                # logging.debug(f"response_data: {response_data}")
                 # Trigger callback
                 handler = self.response_handlers.get(response_data['type'])
                 logging.debug(f"handler found: {handler is not None}")
@@ -327,19 +352,28 @@ class Orchestrator:
         previous_result = state.get_previous_result()
         if not task_template:
             return {}
-        
+
+        session_context = state.context
+
+        session_context.pop('image', None)
+        session_context.pop('initial_message', None)
         context = {
             'user_input': state.user_input or '',
             'image': state.image or '',
+            'csv': state.csv or '',
             'prev_result_content': previous_result.content if previous_result else '',
+            'context': session_context
         }
 
         task_data = {}
         # Pattern 1: Just image - {"image": "path/to/image.jpg"}
         if task_template.strip() == "{image}" and context.get('image'):
             task_data['image'] = context['image']
-        
-        # pattern 2: just prompt
+
+        # Pattern 2: Just csv - {"csv": Attachment}
+        if task_template.strip() == "{csv}":
+            task_data['csv'] = state.csv
+        # pattern: just prompt
         else: 
             formatted_text = task_template
             for key, value in context.items():
@@ -381,6 +415,10 @@ class Orchestrator:
             
             # General LLM agent
             agents["general_llm_agent"] =  GeminiLLM()
+            agents["general_llm_agent_2"] =  GeminiLLM2()
+            agents["migration_analyzer_agent"] = MigrationAnalyzerAgent(
+                url=MIGRATION_API_URL
+            )
             
         except Exception as e:
             raise RuntimeError(f"Failed to initialize agents: {e}")
@@ -414,17 +452,69 @@ class Orchestrator:
             agent_name="classification_agent",
             task_template="{image}"
         )
-        scientific_llm_node = Node(
-            node_id="scientification_llm",
+        animal_info_node = Node(
+            node_id="animal_info",
             type=NodeType.AGENT,
             agent_name="general_llm_agent", 
-            task_template="Provide scientific information  {prev_result_content} including taxonomy, habitat, and conservation status. only one sentence please"
+            task_template="""Provide scientific information  {prev_result_content}. as a json file 
+            name: 
+            scientific_name:
+            phylum: 
+            class: 
+            order:
+            family:
+            genus:
+            species:
+            locations:
+            climate: (only one word)
+            diet: (few words like zebra, grass, bugs)
+            
+            and return ONLY the json file."""
         ) 
+        animal_info_response_node = Node(
+            node_id="animal_info_response",
+            type=NodeType.RESPONSE,
+            response_type="animal", 
+        )
+        migration_analyzer_agent_node = Node (
+            node_id="migration_analyzer", 
+            type=NodeType.AGENT,
+            agent_name="migration_analyzer_agent",
+            task_template="{csv}"
+        )
+        migration_analyzer_response_node = Node(
+            node_id="migration_analyzer_response",
+            type=NodeType.RESPONSE,
+            response_type="migration",
+            response="Migration Analyze" 
+        )
+        summary_llm_node = Node(
+            node_id="summary_llm",
+            type=NodeType.AGENT,
+            agent_name="general_llm_agent", 
+            task_template="""
+            context: {context}
+            user request: {user_input} give me a summary. 
+            
+            bot:
+            researching....
+            research data: {prev_result_content}
+
+            if there not enough data do research and generate the bot reply(summary). return only the reply.
+            """
+        )
         general_llm_node = Node(
             node_id="general_llm",
             type=NodeType.AGENT,
-            agent_name="general_llm_agent", 
-            task_template="{user_input}"
+            agent_name="general_llm_agent_2", 
+            task_template="""
+            context: {context}
+            user request: {user_input}
+            
+            bot: (bot reply)
+
+            if there not enough data do research yourself and generate the bot reply. and return only the reply
+            """
         )
         response_node = Node(
             node_id="response",
@@ -434,7 +524,7 @@ class Orchestrator:
         title_agent_node = Node(
             node_id="title_generate",
             type=NodeType.AGENT,
-            agent_name="general_llm_agent",
+            agent_name="general_llm_agent_2",
             task_template="generate small title for: {prev_result_content}. return ONLY the title please"
         )
         should_title_node = Node(
@@ -452,6 +542,12 @@ class Orchestrator:
             type=NodeType.RESPONSE,
             response_type="title"
         )
+        done_response_node = Node(
+            node_id="done_response", 
+            type=NodeType.RESPONSE,
+            response_type="status",
+            response="done"
+        )
         end_node = Node(
             node_id="end",
             type=NodeType.END
@@ -462,29 +558,40 @@ class Orchestrator:
         graph.add_node(intent_node)
         graph.add_node(greeting_response_node)
         graph.add_node(classification_agent_node)
-        graph.add_node(scientific_llm_node)
+        graph.add_node(animal_info_node)
+        graph.add_node(animal_info_response_node)
+        graph.add_node(migration_analyzer_agent_node)
+        graph.add_node(migration_analyzer_response_node)
+        graph.add_node(summary_llm_node)
         graph.add_node(general_llm_node)
         graph.add_node(response_node)
         graph.add_node(title_agent_node)
         graph.add_node(should_title_node)
         graph.add_node(store_title_node)
         graph.add_node(title_response_node)
+        graph.add_node(done_response_node)
         graph.add_node(end_node)
         
         # Define edges
         graph.add_edge("start", "intent_detection")
         graph.add_edge("intent_detection", "greeting")
         graph.add_edge("intent_detection", "classification_agent")
+        graph.add_edge("intent_detection", "migration_analyzer")
         graph.add_edge("intent_detection", "general_llm")
-        graph.add_edge("classification_agent", "scientification_llm") 
+        graph.add_edge("classification_agent", "animal_info") 
+        graph.add_edge("animal_info", "animal_info_response")
+        graph.add_edge("migration_analyzer", "migration_analyzer_response")
+        graph.add_edge("migration_analyzer_response", "done_response")
+        graph.add_edge("animal_info_response", "summary_llm")
+        graph.add_edge("summary_llm", "response")
         graph.add_edge("general_llm", "response")
-        graph.add_edge("scientification_llm", "response")
-        graph.add_edge("greeting", "end")
+        graph.add_edge("greeting", "done_response")
         graph.add_edge("response", "should_title")
         graph.add_edge("should_title", "title_generate")
-        graph.add_edge("should_title", "end")
+        graph.add_edge("should_title", "done_response")
         graph.add_edge("title_generate", "store_title")
         graph.add_edge("store_title", "title_response")
-        graph.add_edge("title_response", "end")
+        graph.add_edge("title_response", "done_response")
+        graph.add_edge("done_response", "end")
         
         return graph
