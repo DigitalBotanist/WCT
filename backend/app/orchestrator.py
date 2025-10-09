@@ -233,7 +233,7 @@ class Orchestrator:
                 logging.debug(f"response node: {node.node_id}")
                 previous_node_result = state.get_previous_result()
 
-                logging.debug(f"previous response: {previous_node_result}")
+                # logging.debug(f"previous response: {previous_node_result}")
                 logging.debug(f"response data type: {type(previous_node_result)}")
 
                 if not previous_node_result:
@@ -258,6 +258,13 @@ class Orchestrator:
                             'content': 'animal',
                             'animal': previous_node_result.content, 
                         }
+                    elif node.node_id == 'migration_analyzer_response' and previous_node_result.success:
+                        response_data = {
+                            'type': node.response_type or 'message',
+                            'content': node.response,
+                            'data': previous_node_result.content
+                        }
+                        print(response_data.get("content"))
                     elif node.response_type == 'status':
                         response_data = {
                             'type': node.response_type,
@@ -280,7 +287,7 @@ class Orchestrator:
                         'content': "error occured", 
                     }
 
-                logging.debug(f"response_data: {response_data}")
+                # logging.debug(f"response_data: {response_data}")
                 # Trigger callback
                 handler = self.response_handlers.get(response_data['type'])
                 logging.debug(f"handler found: {handler is not None}")
@@ -479,8 +486,8 @@ class Orchestrator:
         migration_analyzer_response_node = Node(
             node_id="migration_analyzer_response",
             type=NodeType.RESPONSE,
-            response_type="message",
-            response="Error" 
+            response_type="migration",
+            response="Migration Analyze" 
         )
         summary_llm_node = Node(
             node_id="summary_llm",

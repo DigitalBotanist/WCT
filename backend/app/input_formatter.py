@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-from app.utils import save_base64_image, save_csv
+from app.utils import save_base64_image, save_csv, save_json
 
 class InputFormatter:
     _instance = None 
@@ -16,9 +16,11 @@ class InputFormatter:
         self.upload_dir = Path(upload_dir)
         self.img_upload_dir = Path(upload_dir, 'img')
         self.csv_upload_dir = Path(upload_dir, 'csv')
+        self.json_upload_dir = Path(upload_dir, 'json')
         self.upload_dir.mkdir(exist_ok=True)
         self.img_upload_dir.mkdir(exist_ok=True)
         self.csv_upload_dir.mkdir(exist_ok=True)
+        self.json_upload_dir.mkdir(exist_ok=True)
 
         InputFormatter._instance = self
   
@@ -43,15 +45,19 @@ class InputFormatter:
         if not file: 
             return None 
 
-        logging.debug("saving image")
+        logging.debug("saving csv")
         try:
             filepath = await save_csv(file, save_dir=self.csv_upload_dir)
             return filepath
         except Exception as e:
             return None
 
+    def process_migration_data(self, data):
+        if not data: 
+            return 
 
-        
+        print(type(data))
+        return save_json(data, save_dir=self.json_upload_dir)
             
     @classmethod
     def get_input_formatter(cls):

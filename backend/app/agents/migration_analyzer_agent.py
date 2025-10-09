@@ -23,8 +23,7 @@ class MigrationAnalyzerAgent(RemoteAgent):
                         files=files
                     )
                     data = response.json()
-                    logging.debug(f"migration analyzer api output: {data}")      
-                    result = Result(success=True, content=(data.get("label")), data=data)
+                    result = Result(success=True, content=(data.get("data")), data=data)
                     
         except Exception as err:
             logging.error(f"migration analyzer error: {err}")

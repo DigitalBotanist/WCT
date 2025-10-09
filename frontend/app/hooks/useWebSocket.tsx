@@ -5,6 +5,8 @@ import type Message from "~/interfaces/Message";
 
 import type WebSocketMessage from "~/interfaces/WebSocketMessage";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export const useWebSocket = (
     messages: Message[],
     setMessages: React.Dispatch<React.SetStateAction<WebSocketMessage[]>>
@@ -37,7 +39,7 @@ export const useWebSocket = (
                 console.log("socket connected");
             };
 
-            ws.current.onmessage = (event) => {
+            ws.current.onmessage = async(event) => {
                 const data: WebSocketMessage = JSON.parse(event.data);
 
                 console.log(data);
@@ -55,6 +57,32 @@ export const useWebSocket = (
                     setLoading(false);
                 }
 
+                if (data.attachments) {
+                    await Promise.all(
+                        data.attachments.map(async (attachment) => {
+                            try {
+                                const attachmentResponse = await fetch(
+                                    `${API_URL}/attachment/${attachment.id}`,
+                                    {
+                                        headers: {
+                                            Authorization: `Bearer ${userState.token}`,
+                                        },
+                                    }
+                                );
+                                const attachmentData = await attachmentResponse.json();
+                                if (attachment.type == "img") {
+                                    data.image = attachmentData; // add image data to the message.image
+                                }
+                                console.log(attachmentData)
+                                if (attachment.type == "migration") {
+                                    data.migrationData = attachmentData;
+                                }
+                            } catch (error) {
+                                console.error("Error fetching attachment:", error);
+                            }
+                        })
+                    );
+                }
                 console.log(data);
                 setMessages((prev) => [...prev, data]);
             };

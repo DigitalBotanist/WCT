@@ -7,4 +7,16 @@ export default interface Message {
     image?: string;
     animal?: AnimalInfo
     csv?: string
+    migrationData?: {
+        resting: [{
+            year: number,
+            locationLong: [number],
+            locationLat: [number]
+        }],
+        stopover: [{
+            year: number,
+            locationLong: [number],
+            locationLat: [number]
+        }]
+    }
 }
