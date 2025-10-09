@@ -357,7 +357,6 @@ class Orchestrator:
 
         session_context.pop('image', None)
         session_context.pop('initial_message', None)
-        print(state.csv.id, state.csv.path)
         context = {
             'user_input': state.user_input or '',
             'image': state.image or '',

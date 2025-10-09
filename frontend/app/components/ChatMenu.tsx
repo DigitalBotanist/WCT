@@ -48,7 +48,7 @@ const ChatMenu = ({
                         {history?.map((history) => (
                             <div
                                 key={history.id}
-                                className={`flex items-center px-2 justify-between gap-1 hover:bg-primary-800  ${history.id == currentSession && "bg-background-400"} text-14px rounded-xl`}
+                                className={`cursor-pointer flex items-center px-2 justify-between gap-1 hover:bg-primary-800  ${history.id == currentSession && "bg-background-400"} text-14px rounded-xl`}
                             >
                                 <p
                                     onClick={() =>
