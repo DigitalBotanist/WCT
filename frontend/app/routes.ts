@@ -6,5 +6,5 @@ export default [
     route("pricing", "routes/pricing.tsx"),
     route("auth", "routes/auth.tsx"),
     route("dashboard", "routes/dashboard.tsx"), 
-    route("chat/:session_id?", "routes/chat.tsx")
+    route("chat/:session_id?", "routes/chat.tsx"),
 ] satisfies RouteConfig;

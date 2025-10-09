@@ -1,15 +1,14 @@
+import React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useWebSocket } from "~/hooks/useWebSocket";
-import type WebSocketMessage from "~/interfaces/WebSocketMessage";
-import logo from "~/assets/logo.svg";
-import { resizeImage } from "~/utils/imageUtils";
 import type Message from "~/interfaces/Message";
 import type MessageWithAttachment from "~/interfaces/MessageWithAttachment";
 import { useAuth } from "~/contexts/AuthContext";
-import { marked } from "marked";
 import type AnimalInfo from "~/interfaces/AnimalInfo";
-import AnimalInfoButton from "~/components/AnimalInfoButton";
+import AnimalCard from "./AnimalCard";
+import ChatInput from "./ChatInput";
+import ChatMessages from "./ChatMessages";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -19,7 +18,7 @@ const ChatWindow = ({
     setCurrentTitle,
 }: {
     session_id: string | undefined;
-    context: AnimalInfo | null
+    context: AnimalInfo | null;
     setCurrentTitle: (title: string) => void;
 }) => {
     const navigate = useNavigate();
@@ -28,32 +27,58 @@ const ChatWindow = ({
     const [animal, setAnimal] = useState<AnimalInfo | null>(null);
     const [animalImg, setAnimalImg] = useState<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
-    const fileInputRef = useRef<HTMLInputElement | null>(null); // file input field
     const [imageBase64, setImageBase64] = useState<string | null>(null);
-    const { isConnected, sendMessage, disconnect, connect, sessionId } =
-        useWebSocket(messages, setMessages);
+    const [csvFile, setCsvFile] = useState<string | "uploading" | null>(null);
+    const {
+        isConnected,
+        sendMessage,
+        disconnect,
+        connect,
+        sessionId,
+        loading,
+    } = useWebSocket(messages, setMessages);
 
     const handleDescribe = () => {
-        sendMessage("user_request", "message", "Provide a description", imageBase64);
-    }
-
+        sendMessage(
+            "user_request",
+            "message",
+            "Provide a description",
+            imageBase64,
+            csvFile
+        );
+    };
 
     const handleAnalyzeMigrationPattern = () => {
-        sendMessage("user_request", "message", "Analyze the migration pattern", imageBase64);
-    }
-        
+        setMessage("Analyze migration pattern of the csv file");
+    };
 
     const handleShowMigrationPattern = () => {
-        sendMessage("user_request", "message", "Show migration pattern", imageBase64);
-    }
-        
+        sendMessage(
+            "user_request",
+            "message",
+            "Show migration pattern",
+            imageBase64,
+            csvFile
+        );
+    };
+
     const handleTreatLevels = () => {
-        sendMessage("user_request", "message", "show threat levels", imageBase64);
-    }
-        
+        sendMessage(
+            "user_request",
+            "message",
+            "show threat levels",
+            imageBase64,
+            csvFile
+        );
+    };
+
     // sending message through the socket
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (loading || csvFile == "uploading") {
+            return;
+        }
 
         // if message if empty don't send
         if (message == "") {
@@ -62,44 +87,25 @@ const ChatWindow = ({
 
         // if there is not current session id send create session message
         if (!sessionId.current) {
-            sendMessage("create_session", "message", message, imageBase64);
+            sendMessage(
+                "create_session",
+                "message",
+                message,
+                imageBase64,
+                csvFile
+            );
             setMessage("");
             setImageBase64(null);
             return;
         }
 
         // else send the message
-        sendMessage("user_request", "message", message, imageBase64);
+        sendMessage("user_request", "message", message, imageBase64, csvFile);
 
         // set input box to empty
         setMessage("");
         setImageBase64(null);
-    };
-
-    // adding files
-    const handleAddClick = () => {
-        fileInputRef.current?.click();
-    };
-
-    // handle file attachments
-    const handleFileChange = async (
-        event: React.ChangeEvent<HTMLInputElement>
-    ) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-            try {
-                const imgUrl = reader.result as string;
-                const resizeBase64Image = await resizeImage(imgUrl); // resize the image
-                console.log(resizeBase64Image);
-                setImageBase64(resizeBase64Image);
-            } catch (error: any) {
-                console.error("Error resizing the image: ", error);
-            }
-        };
-        reader.readAsDataURL(file);
+        setCsvFile(null);
     };
 
     // fetch conversation data with attachments
@@ -119,18 +125,21 @@ const ChatWindow = ({
 
             const msgs: MessageWithAttachment[] = await response.json();
 
+            console.log(msgs);
+
             const msgWithAttachments: MessageWithAttachment[] =
                 await Promise.all(
                     msgs.map((msg) => fetchAttachmentForMessage(msg))
                 );
 
+            console.log(msgWithAttachments);
             return msgWithAttachments.map((msg) => ({
                 type: "message",
                 content: msg.content,
                 image: msg.image,
                 role: msg.role,
+                migrationData: msg.migrationData,
             }));
-
         } catch (err: any) {
             console.log(err.message);
         }
@@ -151,16 +160,16 @@ const ChatWindow = ({
     // check context
     useEffect(() => {
         if (!context) {
-            setAnimal(null)
-            return
-        };
-        
-        setAnimal(context)
-        console.log("context", context.image)
+            setAnimal(null);
+            return;
+        }
+
+        setAnimal(context);
+        console.log("context", context.image);
         if (context.image) {
             fetchAnimalImage(context.image);
         }
-    }, [context]) 
+    }, [context]);
 
     // check for title message
     useEffect(() => {
@@ -215,6 +224,12 @@ const ChatWindow = ({
                         if (attachment.type == "img") {
                             msg.image = attachmentData; // add image data to the message.image
                         }
+                        if (attachment.type == "migration") {
+                            console.log(attachment);
+                            msg.migrationData = attachmentData;
+                            console.log(attachmentData);
+                            console.log(msg);
+                        }
                     } catch (error) {
                         console.error("Error fetching attachment:", error);
                     }
@@ -243,20 +258,12 @@ const ChatWindow = ({
 
         const loadConversation = async () => {
             const updatedMessages = await fetchConversationData(session_id);
+            console.log("up", updatedMessages);
             setMessages(updatedMessages);
         };
 
         loadConversation();
     }, [session_id, userState.token]);
-
-    // useEffect(() => {
-    //     if (!isConnected) {
-    //         connect()
-    //         if (sessionId.current)
-    //     }
-    // }, [sessionId.current])
-
-    // connect the socket in the first rendering
 
     useEffect(() => {
         if (isConnected && session_id) {
@@ -264,7 +271,8 @@ const ChatWindow = ({
                 "continue_session",
                 "sessionId",
                 `${session_id}`,
-                imageBase64
+                imageBase64,
+                csvFile
             );
         }
     }, [isConnected, session_id]);
@@ -282,166 +290,30 @@ const ChatWindow = ({
 
     return (
         <div className="w-full h-full flex items-center">
-            {/* animal window */}
+            {/* animal card */}
             {animal && (
-                <div className="text-text-300 w-3/8 flex m-3 rounded-xl flex-col gap-4  p-3 bg-gradient-to-br from-primary-600 via-primary-900 to-primary-700">
-                    <div className="flex-1 bg-background-700 rounded-4xl p-2 flex gap-2 flex-col items-center">
-                        <div className="flex flex-col items-center">
-                            <h3 className="font-bold">{animal.name}</h3>
-                            <h3 className="text-sm">
-                                {animal.scientific_name}
-                            </h3>
-                        </div>
-
-                        {/* img */}
-                        {animalImg && (
-                            <img
-                                src={animalImg}
-                                alt=""
-                                className="rounded-2xl h-[300px] object-cover"
-                            />
-                        )}
-
-                        <div className="text-sm rounded-2xl flex flex-col gap-1 items-center w-full bg-background-800 p-2">
-                            <h3>Taxonomy</h3>
-                            <div className="w-full flex gap-2 items-center">
-                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg">
-                                    <h4 className="font-bold">Phylum</h4>
-                                    <p>{animal.phylum}</p>
-                                </div>
-                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg">
-                                    <h4 className="font-bold">Class</h4>
-                                    <p>{animal.class}</p>
-                                </div>
-                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg">
-                                    <h4 className="font-bold">Order</h4>
-                                    <p>{animal.order}</p>
-                                </div>
-                            </div>
-                            <div className="w-full flex gap-2 items-center">
-                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg">
-                                    <h4 className="font-bold">Family</h4>
-                                    <p>{animal.family}</p>
-                                </div>
-                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg">
-                                    <h4 className="font-bold">Genus</h4>
-                                    <p>{animal.genus}</p>
-                                </div>
-                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg">
-                                    <h4 className="font-bold">Species</h4>
-                                    <p>{animal.species}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="text-sm rounded-2xl flex flex-col gap-1 items-center w-full bg-background-800 p-2">
-                            <h3>Habitat</h3>
-                            <div className="w-full flex gap-2 items-center">
-                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg">
-                                    <h4 className="font-bold">Locations</h4>
-                                    <p>{animal.locations}</p>
-                                </div>
-                                <div className="flex flex-col items-center bg-background-400 p-2 rounded-lg">
-                                    <h4 className="font-bold">Climate</h4>
-                                    <p>{animal.climate}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="text-sm rounded-2xl flex flex-col gap-1 items-center w-full bg-background-800 p-2">
-                            <h3>Diet</h3>
-                            <div className="w-full flex gap-2 items-center">
-                                <div className="flex flex-col items-center bg-background-400 p-2 rounded-lg">
-                                    <h4 className="font-bold">Order</h4>
-                                    <p>{animal.order}</p>
-                                </div>
-                                <div className="flex-1 flex flex-col items-center bg-background-400 p-2 rounded-lg overflow-clip overflow-ellipsis whitespace-nowrap">
-                                    <h4 className="font-bold">Food</h4>
-                                    <p>{animal.diet}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <AnimalInfoButton text="Describe" handleClick={handleDescribe}/>
-                        <AnimalInfoButton text="Analyze migration" handleClick={handleAnalyzeMigrationPattern}/>
-                        <AnimalInfoButton text="Show migration pattern" handleClick={handleShowMigrationPattern}/>
-                        <AnimalInfoButton text="Treat levels" handleClick={handleTreatLevels}/>
-                        <button className="bg-red-900 p-3 rounded-lg">
-                            Describe
-                        </button>
-                    </div>
-                </div>
+                <AnimalCard
+                    animal={animal}
+                    animalImg={animalImg}
+                    handleAnalyzeMigrationPattern={
+                        handleAnalyzeMigrationPattern
+                    }
+                    handleDescribe={handleDescribe}
+                    handleTreatLevels={handleTreatLevels}
+                />
             )}
             <div className="w-full h-full flex flex-col items-center">
-                {/* messages */}
-                <div className="flex-1 overflow-auto flex flex-col gap-4 w-4/5 my-3">
-                    {messages
-                        .filter((message) => message.type == "message")
-                        .map((message) =>
-                            // user messages
-                            message.role == "user" ? (
-                                <>
-                                    {message.image && (
-                                        <img
-                                            className="w-3/5 self-end rounded-2xl"
-                                            src={message.image}
-                                        />
-                                    )}
-                                    <div
-                                        className="bg-background-300 p-5 w-3/5 rounded-2xl self-end"
-                                        dangerouslySetInnerHTML={{
-                                            __html: marked(message.content),
-                                        }}
-                                    ></div>
-                                </>
-                            ) : (
-                                // system messages
-                                <div className="w-3/5 flex gap-2 items-start">
-                                    <img
-                                        src={logo}
-                                        alt=""
-                                        className="w-8 mt-4"
-                                    />
-                                    <div
-                                        className="bg-primary-800 p-5 flex-1 rounded-2xl"
-                                        dangerouslySetInnerHTML={{
-                                            __html: marked(message.content),
-                                        }}
-                                    ></div>
-                                </div>
-                            )
-                        )}
-                </div>
-                <form className="flex gap-2 w-19/20 mb-4" onSubmit={handleSend}>
-                    {/* Hidden file input */}
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="hidden"
-                        onChange={handleFileChange}
-                        accept="image/*,.pdf,.doc,.docx,.csv" // customize accepted file types
-                    />
-                    <button
-                        type="button"
-                        className="bg-background-600 p-4 rounded-md"
-                        onClick={handleAddClick}
-                    >
-                        Add
-                    </button>
-                    <input
-                        type="text"
-                        name="message"
-                        id="message"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        className="w-full px-4 py-4 rounded-md border-2 border-background-600 focus:outline-1 focus:outline-primary-700"
-                    />
-                    <button
-                        className="bg-primary-800 p-4 rounded-md"
-                        type="submit"
-                    >
-                        Send
-                    </button>
-                </form>
+                <ChatMessages messages={messages} />
+                <ChatInput
+                    csvFile={csvFile}
+                    handleSend={handleSend}
+                    imageBase64={imageBase64}
+                    loading={loading}
+                    message={message}
+                    setCsvFile={setCsvFile}
+                    setMessage={setMessage}
+                    setImageBase64={setImageBase64}
+                />
             </div>
         </div>
     );

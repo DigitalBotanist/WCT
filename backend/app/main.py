@@ -202,6 +202,23 @@ async def get_attachment(
         raise HTTPException(status_code=403, detail="Token not found. permission denied")
     return conversation_manager.get_attachment(attachment_id=attachment_id) 
 
+@app.post("/attachment/csv")
+async def get_attachment(
+    file: UploadFile = File(...),
+    token: str = Depends(oauth2_scheme), 
+    user_manager: UserManager = Depends(UserManager.get_user_manager),
+    conversation_manager: ConversationManager =Depends(ConversationManager.get_conversation_manager),
+    input_formatter: InputFormatter = Depends(InputFormatter.get_input_formatter)
+    ):
+
+    user = await user_manager.verify_token(token=token)
+    if not user: 
+        raise HTTPException(status_code=403, detail="Token not found. permission denied")
+
+    filepath = await input_formatter.process_csv(file) 
+    attachment = conversation_manager.save_temp_csv(user.id, filepath)
+    return {"id": attachment.id}
+
 @app.get("/animal_img/{filename}")
 async def get_attachment(
     filename: str,
@@ -233,7 +250,10 @@ async def websocket_endpoint(
         logging.debug(f"response: {message}")
         conversation_manager.save_message(session_id=session_id, content=message.get("content"))
         await websocket.send_json(message)
-
+    async def send_status(message):
+        logging.debug(f"sending status: {message}")
+        logging.debug(f"response: {message}")
+        await websocket.send_json(message)
     async def send_title(message):
         logging.debug(f"sending title: {message}")
         session_manager.save_title(session_id=session_id, title=message.get("content"))
@@ -255,6 +275,23 @@ async def websocket_endpoint(
         message['animal'] = context
         session_manager.save_context(session_id=session_id,context=context)
         await websocket.send_json(message)
+
+    async def send_migration_message(message: Dict):
+        logging.debug(f"saving migration data: {message.get('data') is not None}")
+        content = message.get("content")
+        data = message.get("data")
+
+        if (not data): 
+            await websocket.send_json(message)
+
+        filename = input_formatter.process_migration_data(data=data) 
+
+        responseMessage = conversation_manager.save_message(session_id=session_id, content=content)
+        attachment = conversation_manager.save_attachments(message_id=responseMessage.id, attachemnts_paths=[filename], type="migration")
+        responseMessage = conversation_manager.get_message(message_id=responseMessage.id)
+        message = {"type": "message", "content": content, "attachments": [{"id": str(attachment.id), "type": "migration"}]}
+        print(message)
+        await websocket.send_json(message)
          
     await websocket.accept()    # accept the connection 
     logging.info(f"web socket is connected")
@@ -262,6 +299,8 @@ async def websocket_endpoint(
     orchestrator.register_response_handler("message", send_message)
     orchestrator.register_response_handler("title", send_title)
     orchestrator.register_response_handler("animal", send_animal)
+    orchestrator.register_response_handler("status", send_status)
+    orchestrator.register_response_handler("migration", send_migration_message)
 
     # check if the token exist 
     if not token:
@@ -330,6 +369,10 @@ async def websocket_endpoint(
                         "type": "connection_status",
                         "content": "session_validated",
                     }) 
+                    await websocket.send_json({
+                        "type": "status",
+                        "content": "done",
+                    }) 
                 websocket.state.session_id = session_id
                 continue
             try: 
@@ -344,6 +387,7 @@ async def websocket_endpoint(
             session = session_manager.get_session(session_id=session_id)
             message = conversation_manager.save_message(session_id=session_id, content=data.get("content"), role='user')  # save messages to the database 
 
+            # checking if there are images 
             logging.debug(f"image in the user request: {data.get('image') is not None}")
             if data.get('image'): 
                 image, error = input_formatter.process_image(data)
@@ -356,6 +400,14 @@ async def websocket_endpoint(
                 conversation_manager.save_attachments(message_id=message.id, attachemnts_paths=[image], type="img")
             else:
                 image = None
+            
+            # checking for csv
+            if data.get('csv'):
+                csv = conversation_manager.save_csv_attachment(message_id=message.id, attachment_id=data.get('csv'))
+            else: 
+                csv = None
+
+
             if data.get("action") == "user_request": 
                 session_id = data.get("sessionId")
                 if not await session_manager.validate_session(session_id=session_id, user_id=user.id):
@@ -371,6 +423,8 @@ async def websocket_endpoint(
             if image:
                 state.image = image
 
+            if csv: 
+                state.csv = csv
             if session.title: 
                 logging.debug(f"session title: {session.title}")
                 state.title = session.title

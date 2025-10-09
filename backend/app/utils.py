@@ -4,6 +4,7 @@ from PIL import Image
 from io import BytesIO
 from datetime import datetime
 import mimetypes
+import json
 
 def save_base64_image(base64_string: str, save_dir: str = ".") -> str:
     # Extract MIME type and data
@@ -42,3 +43,31 @@ def image_to_base64(image_path: str) -> str:
 
     # Return as a data URL
     return f"data:{mime_type};base64,{base64_data}"
+
+async def save_csv(file, save_dir: str = "."):
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S%f')}.csv"
+
+    file_location = f"{save_dir}/{filename}"
+
+    with open(file_location, 'wb') as f: 
+        while chunk := await file.read(1024):
+            f.write(chunk)
+
+    return file_location 
+
+def save_json(data, save_dir: str = "."):
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S%f')}.json"
+    file_location = f"{save_dir}/{filename}"
+
+    print(type(data))
+    with open(file_location, 'w') as f: 
+        json.dump(data, f, indent=4)
+
+    return file_location 
+
+
+def get_json(filename):
+    with open(filename, 'r') as f: 
+        data = json.load(f) 
+        return data 
+
