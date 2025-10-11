@@ -1,10 +1,15 @@
 import type { JSX } from "react/jsx-runtime";
 import { CheckIcon } from "@heroicons/react/24/solid";
 import Footer from "./Footer"
+import {Link} from 'react-router'
+import Navbar from "./Navbar";
 
 export default function Pricing(){
     return(
         <>
+            <div>
+                <Navbar/>
+            </div>
             <div className="min-h-screen flex flex-col bg-slate-900">
                 <section className="flex-1 py-16">
                     <div className="container mx-auto max-w-6xl px-4">
@@ -55,9 +60,12 @@ export default function Pricing(){
                                     </div>
                                 </div> 
                                 <div className="text-center mt-14">
-                                    <span className="bg-gradient-to-r from-[#07DEA1] to-[#047857]  rounded-2xl  ps-10 pe-10 pt-2 pb-2">
+                                    <Link type="button" to="/auth">
+                                        <span className="bg-gradient-to-r from-[#07DEA1] to-[#047857]  rounded-2xl  ps-10 pe-10 pt-2 pb-2 hover:from-[#10B981] hover:to-[#064E3B]">
                                         Free
-                                    </span> 
+                                        </span> 
+                                    </Link>
+                                    
                                 </div>
                             </div>
 
@@ -99,9 +107,12 @@ export default function Pricing(){
                                 </div>
 
                                 <div className="text-center mt-8">
-                                    <span className="bg-gradient-to-r from-[#07DEA1] to-[#047857]  rounded-2xl  ps-10 pe-10 pt-2 pb-2">
-                                        Buy Now
-                                    </span> 
+                                    <Link type="button" to='/standard-pay'>
+                                        <span className="bg-gradient-to-r from-[#07DEA1] to-[#047857]  rounded-2xl  ps-10 pe-10 pt-2 pb-2 hover:from-[#10B981] hover:to-[#064E3B]">
+                                            Buy Now
+                                        </span>
+                                    </Link>
+                                     
                                 </div>
                             </div>
 
@@ -145,9 +156,12 @@ export default function Pricing(){
                                 </div>
                                 
                                 <div className="text-center mt-14">
-                                    <span className="bg-gradient-to-r from-[#07DEA1] to-[#047857]  rounded-2xl  ps-10 pe-10 pt-2 pb-2">
-                                        Buy Now
-                                    </span> 
+                                    <Link type="button" to='/pro-pay'>
+                                        <span className="bg-gradient-to-r from-[#07DEA1] to-[#047857]  rounded-2xl  ps-10 pe-10 pt-2 pb-2 hover:from-[#10B981] hover:to-[#064E3B]">
+                                            Buy Now
+                                        </span> 
+                                    </Link>
+                                    
                                 </div>
                             </div>
                         </div>
@@ -157,10 +171,10 @@ export default function Pricing(){
             
             
                 
-                
+                <Footer/>
                 
             </div>
-            <Footer/>
+            
         </>
     )
 }

@@ -1,4 +1,5 @@
 import type { Route } from "./+types/standardpay";
+import Standard from "~/components/PaymentPageStandard"
 
 export function meta(args: Route.MetaArgs) {
     return [
@@ -9,7 +10,7 @@ export function meta(args: Route.MetaArgs) {
 export default function standardpay() {
     return (
         <div className="">
-            standard
+            <Standard/>
         </div>
     );
 }
