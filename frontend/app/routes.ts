@@ -4,6 +4,8 @@ export default [
     index("routes/home.tsx"),
     route("aboutus", "routes/aboutus.tsx"),
     route("pricing", "routes/pricing.tsx"),
+    route("standard-pay", "routes/standardpay.tsx"),
+    route("pro-pay", "routes/propay.tsx"),
     route("auth", "routes/auth.tsx"),
     route("dashboard", "routes/dashboard.tsx"), 
     route("chat/:session_id?", "routes/chat.tsx"),
