@@ -9,6 +9,7 @@ import type AnimalInfo from "~/interfaces/AnimalInfo";
 import AnimalCard from "./AnimalCard";
 import ChatInput from "./ChatInput";
 import ChatMessages from "./ChatMessages";
+import type ChatSession from "~/interfaces/ChatSession";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -16,10 +17,12 @@ const ChatWindow = ({
     session_id,
     context,
     setCurrentTitle,
+    handleAddChatSession,
 }: {
     session_id: string | undefined;
     context: AnimalInfo | null;
     setCurrentTitle: (title: string) => void;
+    handleAddChatSession: (session: ChatSession) => void;
 }) => {
     const navigate = useNavigate();
     const { userState } = useAuth();
@@ -39,6 +42,7 @@ const ChatWindow = ({
     } = useWebSocket(messages, setMessages);
 
     const handleDescribe = () => {
+        if (loading) return;
         sendMessage(
             "user_request",
             "message",
@@ -49,10 +53,12 @@ const ChatWindow = ({
     };
 
     const handleAnalyzeMigrationPattern = () => {
+        if (loading) return
         setMessage("Analyze migration pattern of the csv file");
     };
 
     const handleShowMigrationPattern = () => {
+        if(loading) return
         sendMessage(
             "user_request",
             "message",
@@ -63,6 +69,7 @@ const ChatWindow = ({
     };
 
     const handleTreatLevels = () => {
+        if (loading) return
         sendMessage(
             "user_request",
             "message",
@@ -285,6 +292,7 @@ const ChatWindow = ({
     useEffect(() => {
         if (!sessionId.current) return;
         console.log("session id:", sessionId.current);
+        handleAddChatSession({id: sessionId.current})
         navigate(`/chat/${sessionId.current}`);
     }, [sessionId.current]);
 
@@ -302,7 +310,7 @@ const ChatWindow = ({
                     handleTreatLevels={handleTreatLevels}
                 />
             )}
-            <div className="w-full h-full flex flex-col items-center">
+            <div className="w-full h-full flex flex-1 flex-col items-center">
                 <ChatMessages messages={messages} />
                 <ChatInput
                     csvFile={csvFile}

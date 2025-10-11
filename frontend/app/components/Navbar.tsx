@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router";
+import logo from '~/assets/logo_with_name.svg'
 
 
 function Navbar() {
@@ -8,7 +9,7 @@ function Navbar() {
       <div className="container flex flex-col sm:flex-row justify-between items-center mx-auto py-4 px-8">
         <div className="flex items-center text-2xl">
           <div className="mr-3">
-            <img src="./logo with name.svg" alt="My SVG" width={100} height={100} />
+            <img src={logo} alt="My SVG" width={200}/>
           </div>
         </div>
 

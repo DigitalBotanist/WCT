@@ -1,6 +1,6 @@
 import logo from "~/assets/logo_with_name.svg";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useAuth } from "~/contexts/AuthContext";
 import { useHistory } from "~/hooks/useHistory";
 import type ChatSession from "~/interfaces/ChatSession";
@@ -33,7 +33,9 @@ const ChatMenu = ({
     return (
         <div className="w-4/20 h-full bg-background-700 flex flex-col items-center justify-between">
             <div className="w-full flex flex-col items-center py-5 gap-5 overflow-auto">
+                <Link to='/'>
                 <img src={logo} alt="" className="w-40" />
+                </Link>
                 {/* new session button */}
                 <button
                     onClick={handleNewChat}

@@ -176,11 +176,11 @@ class Orchestrator:
             return 'end'
         prev_result = state.get_previous_result()
         if state.intent == 'greeting': 
-            return 'end'
+            return 'done_response'
         if not prev_result: 
-            return 'end'
+            return 'done_response'
         if len(prev_result.content) < 4: 
-            return 'end'
+            return 'done_response'
         return 'title_generate'
 
 

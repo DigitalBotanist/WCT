@@ -33,6 +33,11 @@ const Dashboard = () => {
         }
     };
 
+    const handleAddChatSession = (session: ChatSession) => {
+        if (history.filter(s => s.id == session.id).length != 0) return
+        setHistory(prev => ([session, ...prev]))
+    }
+
     useEffect(() => {
         if (userState.token == null) {
             return;
@@ -95,6 +100,7 @@ const Dashboard = () => {
                 session_id={session_id}
                 setCurrentTitle={setCurrentTitle}
                 context={getContextFromSession()}
+                handleAddChatSession={handleAddChatSession}
             />
         </div>
     );

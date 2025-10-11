@@ -1,6 +1,9 @@
 import { useRef } from "react";
 import { useAuth } from "~/contexts/AuthContext";
 import { resizeImage } from "~/utils/imageUtils";
+import loadingIcon from "~/assets/loading.svg";
+import sendIcon from "~/assets/send.svg";
+import addIcon from "~/assets/add.svg";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -112,13 +115,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 onChange={handleFileChange}
                 accept="image/*,.pdf,.doc,.docx,.csv" // customize accepted file types
             />
+            {/* add attachments */}
             <button
                 type="button"
-                className="bg-background-600 p-4 rounded-md"
+                className="bg-background-600 p-3 rounded-md"
                 onClick={handleAddClick}
             >
-                Add
+                <img className="w-10" src={addIcon} alt="" />
             </button>
+            {/* show attachment status */}
             <div className="w-full">
                 {imageBase64 && (
                     <div className="flex justify-between gap-3 absolute -translate-y-[120%] right-0 p-3 bg-linear-to-r from-teal-900 to-teal-600  rounded-xl">
@@ -132,7 +137,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     </div>
                 )}
                 {csvFile && (
-                    <div className="flex itemce justify-between gap-5 absolute -translate-y-[120%] right-0 p-3 bg-linear-to-r from-teal-900 to-teal-600 rounded-xl">
+                    <div className="flex justify-between gap-5 absolute -translate-y-[120%] right-0 p-3 bg-linear-to-r from-teal-900 to-teal-600 rounded-xl">
                         <div className="">
                             <h4 className="text-sm">csv file: </h4>
                             <p>
@@ -158,12 +163,31 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     className="w-full px-4 py-4 rounded-md border-2 border-background-600 focus:outline-1 focus:outline-primary-700"
                 />
             </div>
+            {/* loading
+            {loading && (
+                <div className="z-100 flex gap-2 justify-between items-center absolute p-3 -translate-y-[120%] left-1/2 bg-background-300 rounded-full">
+                    <img
+                        className="animate-spin h-6"
+                        src={loadingIcon}
+                        alt=""
+                    />
+                    <p className="text-text-100">loading</p>
+                </div>
+            )} */}
             <button
                 className="bg-primary-800 p-4 rounded-md hover:bg-primary-700 disabled:bg-background-500 disabled:hover:bg-background-500 cursor-pointer"
                 type="submit"
                 disabled={loading || csvFile == "uploading"}
             >
-                Send
+                {loading ? (
+                    <img
+                        className="animate-spin h-6"
+                        src={loadingIcon}
+                        alt=""
+                    />
+                ) : (
+                    <img className="w-8" src={sendIcon} alt="" />
+                )}
             </button>
         </form>
     );
