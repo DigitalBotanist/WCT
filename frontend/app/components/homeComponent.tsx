@@ -1,5 +1,9 @@
 import React from "react";
 import Navbar from "./Navbar"; 
+import migration from '../assets/migration.png'
+import ident from '../assets/ident.png'
+import threat from '../assets/threat.png'
+import paw from '../assets/paw.png'
 
 function HomeC() {
     return ( 
@@ -28,7 +32,7 @@ function HomeC() {
                         </div>
 
                         <div className="text-4xl text-white pl-48">
-                        <img src="./paw.png" width={400} height={400} alt="Paw" />
+                        <img src={paw} width={400} height={400} alt="Paw" />
                         </div>
                     </div>
                     </section>
@@ -50,7 +54,7 @@ function HomeC() {
                             </p>
                         </div>
                         </div>
-                        <img src="./ident.png" className="w-62 h-64" alt="Species Identification" />
+                        <img src={ident} className="w-62 h-64" alt="Species Identification" />
                     </div>
                     </section>
 
@@ -65,7 +69,7 @@ function HomeC() {
                             </p>
                         </div>
                         </div>
-                        <img src="./migration.png" className="w-62 h-64 pl-48" alt="Migration" />
+                        <img src={migration}className="w-62 h-64 pl-48" alt="Migration" />
                     </div>
                     </section>
 
@@ -80,7 +84,7 @@ function HomeC() {
                             </p>
                         </div>
                         </div>
-                        <img src="./threat.png" className="w-62 h-64" alt="Threat" />
+                        <img src={threat} className="w-62 h-64" alt="Threat" />
                     </div>
                     </section>
 
@@ -122,27 +126,7 @@ function HomeC() {
 
                 {/* Footer */}
                 <footer className="container mx-auto py-16 px-3 mt-48 mb-8 text-white">
-                    <div className="flex -mx-3">
-                    <div className="flex-1 px-3">
-                        <h2 className="text-lg font-semibold">About Us</h2>
-                        <p className="mt-5">Ridiculus mus mauris vitae ultricies leo integer malesuada nunc.</p>
-                    </div>
-                    <div className="flex-1 px-3">
-                        <h2 className="text-lg font-semibold">Important Links</h2>
-                        <ul className="mt-4 leading-loose">
-                        <li><a href="https://codebushi.com">Terms &amp; Conditions</a></li>
-                        <li><a href="https://codebushi.com">Privacy Policy</a></li>
-                        </ul>
-                    </div>
-                    <div className="flex-1 px-3">
-                        <h2 className="text-lg font-semibold">Social Media</h2>
-                        <ul className="mt-4 leading-loose">
-                        <li><a href="https://dev.to/changoman">Dev.to</a></li>
-                        <li><a href="https://twitter.com/HuntaroSan">Twitter</a></li>
-                        <li><a href="https://github.com/codebushi/gatsby-starter-lander">GitHub</a></li>
-                        </ul>
-                    </div>
-                    </div>
+                        
                 </footer>
                 </div>
         </div>
