@@ -77,14 +77,15 @@ Detects potential risks affecting species survival and habitat safety.
 ### 1️⃣ Clone the Repository
 - git clone https://github.com/DigitalBotanist/WCT.git
 - cd WCT
-- venv\Scripts\activate
 
 ### 2️⃣ Backend Setup
+- venv\Scripts\activate
+- pip install -r requirements.txt
 - cd agent/image_classification Uvicorn main:app --reload --port 8001
 - cd agent/migration_patter_analyzer Uvicorn main:app --reload --port 8002
 - cd Backend Uvicorn app.main:app --reload
   
 ### 3️⃣ Frontend Setup
 - cd frontend
-npm install
-npm run dev
+- npm install
+- npm run dev
