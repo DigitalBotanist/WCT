@@ -293,6 +293,26 @@ async def websocket_endpoint(
         print(message)
         await websocket.send_json(message)
          
+    async def send_threat_message(message: Dict):
+        logging.debug(f"saving migration data: {message.get('data') is not None}")
+        content = message.get("content")
+        data = message.get("data")
+
+        print(content)
+        print(data)
+
+        if (not data): 
+            await websocket.send_json(message)
+
+        filename = input_formatter.process_migration_data(data=data) 
+
+        responseMessage = conversation_manager.save_message(session_id=session_id, content=content)
+        attachment = conversation_manager.save_attachments(message_id=responseMessage.id, attachemnts_paths=[filename], type="threat")
+        responseMessage = conversation_manager.get_message(message_id=responseMessage.id)
+        message = {"type": "message", "content": content, "attachments": [{"id": str(attachment.id), "type": "threat"}]}
+        print(message)
+        await websocket.send_json(message)
+         
     await websocket.accept()    # accept the connection 
     logging.info(f"web socket is connected")
 
@@ -301,6 +321,7 @@ async def websocket_endpoint(
     orchestrator.register_response_handler("animal", send_animal)
     orchestrator.register_response_handler("status", send_status)
     orchestrator.register_response_handler("migration", send_migration_message)
+    orchestrator.register_response_handler("threat", send_threat_message)
 
     # check if the token exist 
     if not token:

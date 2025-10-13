@@ -237,6 +237,15 @@ const ChatWindow = ({
                             console.log(attachmentData);
                             console.log(msg);
                         }
+                        if (attachment.type == "threat") {
+
+                            console.log(attachment);
+                            msg.threatData = attachmentData;
+                            console.log("Threat .................................")
+                            console.log(attachmentData);
+                            console.log(msg);
+
+                        }
                     } catch (error) {
                         console.error("Error fetching attachment:", error);
                     }
