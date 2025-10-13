@@ -75,5 +75,5 @@ Detects potential risks affecting species survival and habitat safety.
 ## ⚙️ Installation & Setup
 
 ### 1️⃣ Clone the Repository
-git clone https://github.com/DigitalBotanist/WCT.git
-cd 
+- git clone https://github.com/DigitalBotanist/WCT.git
+- cd 
