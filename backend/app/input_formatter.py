@@ -56,7 +56,12 @@ class InputFormatter:
         if not data: 
             return 
 
-        print(type(data))
+        return save_json(data, save_dir=self.json_upload_dir)
+
+    def process_threat_data(self, data):
+        if not data: 
+            return 
+
         return save_json(data, save_dir=self.json_upload_dir)
             
     @classmethod

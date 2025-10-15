@@ -107,9 +107,10 @@ class ConversationManager:
             img = image_to_base64(attachment.path)
             return img
         
-        if (attachment.type == 'migration'):
+        if (attachment.type == 'migration' or attachment.type == 'threat'):
             data = get_json(attachment.path)
             return data
+
 
     def get_image(self, filename):
         logging.debug("getting image")

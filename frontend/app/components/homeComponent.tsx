@@ -14,7 +14,7 @@ function HomeC() {
                 <main>
 
                     {/* Hero Section */}
-                    <section className="pt-20 md:pt-40 my-12">
+                    <section className="pt-20 md:pt-40 mb-12">
                     <div className="container mx-auto px-8 lg:flex">
                         <div className="text-center lg:text-left lg:w-1/2">
                         <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold leading-none text-gray-300">

@@ -18,7 +18,7 @@ const AnimalCard: React.FC<AnimalCardProps> = ({
     handleTreatLevels,
 }) => {
     return (
-        <div className="text-text-300 w-3/8 flex m-3 rounded-xl flex-col gap-4  p-3 bg-gradient-to-br from-primary-600 via-primary-900 to-primary-700">
+        <div className="text-text-300 w-2/8 flex m-3 rounded-xl flex-col gap-4  p-3 bg-gradient-to-br from-primary-600 via-primary-900 to-primary-700">
             <div className="flex-1 bg-background-700 rounded-4xl p-2 flex gap-2 flex-col items-center">
                 <div className="flex flex-col items-center">
                     <h3 className="font-bold">{animal.name}</h3>

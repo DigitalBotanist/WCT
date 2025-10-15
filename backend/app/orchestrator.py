@@ -5,6 +5,8 @@ import logging
 
 from app.agents.image_classifer_agent import ImageClassifierAgent
 from app.agents.migration_analyzer_agent import MigrationAnalyzerAgent
+from app.agents.threat_agent import ThreatAgent
+from app.agents.threat_agent import ThreatAgent
 from app.agents.gemini_agent import GeminiLLM
 from app.agents.gemini_agent_2 import GeminiLLM2
 from app.models.agent import Agent
@@ -14,6 +16,8 @@ load_dotenv()
 
 IMAGE_API_URL = os.getenv("IMAGE_API_URL")
 MIGRATION_API_URL = os.getenv("MIGRATION_API_URL")
+SERPER_KEY = os.getenv("SERPER_KEY")
+GEMINI_KEY_3 = os.getenv("GEMINI_KEY_3")
 
 
 class WorkflowGraph:
@@ -163,6 +167,8 @@ class Orchestrator:
             return 'classification_agent'
         elif intent == 'migration_analyze':
             return 'migration_analyzer'
+        elif intent == 'threat_analyze':
+            return 'threat_analyzer'
         elif intent == 'unkown': 
             return 'general_llm'
         else:
@@ -176,11 +182,11 @@ class Orchestrator:
             return 'end'
         prev_result = state.get_previous_result()
         if state.intent == 'greeting': 
-            return 'end'
+            return 'done_response'
         if not prev_result: 
-            return 'end'
+            return 'done_response'
         if len(prev_result.content) < 4: 
-            return 'end'
+            return 'done_response'
         return 'title_generate'
 
 
@@ -263,6 +269,13 @@ class Orchestrator:
                             'type': node.response_type or 'message',
                             'content': node.response,
                             'data': previous_node_result.content
+                        }
+                        print(response_data.get("content"))
+                    elif node.node_id == 'threat_analyzer_response' and previous_node_result.success:
+                        response_data = {
+                            'type': node.response_type or 'message',
+                            'content': previous_node_result.content,
+                            'data': previous_node_result.data
                         }
                         print(response_data.get("content"))
                     elif node.response_type == 'status':
@@ -357,12 +370,15 @@ class Orchestrator:
 
         session_context.pop('image', None)
         session_context.pop('initial_message', None)
+
+        print(session_context)
         context = {
             'user_input': state.user_input or '',
             'image': state.image or '',
             'csv': state.csv or '',
             'prev_result_content': previous_result.content if previous_result else '',
-            'context': session_context
+            'context': session_context,
+            'name': session_context.get('name', '')
         }
 
         task_data = {}
@@ -373,6 +389,9 @@ class Orchestrator:
         # Pattern 2: Just csv - {"csv": Attachment}
         if task_template.strip() == "{csv}":
             task_data['csv'] = state.csv
+
+        if task_template.strip() == "{name}":
+            task_data['name'] = session_context.get('name', '')
         # pattern: just prompt
         else: 
             formatted_text = task_template
@@ -411,6 +430,10 @@ class Orchestrator:
             # Classification agent  
             agents["classification_agent"] = ImageClassifierAgent(
                 url=IMAGE_API_URL
+            )
+            agents["threat_analyzer_agent"] = ThreatAgent(
+                gemini_key=GEMINI_KEY_3, 
+                serper_key=SERPER_KEY
             )
             
             # General LLM agent
@@ -488,6 +511,18 @@ class Orchestrator:
             response_type="migration",
             response="Migration Analyze" 
         )
+        threat_agent_node = Node(
+            node_id="threat_analyzer",
+            type=NodeType.AGENT,
+            agent_name="threat_analyzer_agent",
+            task_template="{name}"
+        )
+        threat_response_node = Node(
+            node_id="threat_analyzer_response",
+            type=NodeType.RESPONSE,
+            response_type="threat",
+            response="Threat analyzed:"
+        )
         summary_llm_node = Node(
             node_id="summary_llm",
             type=NodeType.AGENT,
@@ -562,6 +597,8 @@ class Orchestrator:
         graph.add_node(animal_info_response_node)
         graph.add_node(migration_analyzer_agent_node)
         graph.add_node(migration_analyzer_response_node)
+        graph.add_node(threat_agent_node)
+        graph.add_node(threat_response_node)
         graph.add_node(summary_llm_node)
         graph.add_node(general_llm_node)
         graph.add_node(response_node)
@@ -577,11 +614,14 @@ class Orchestrator:
         graph.add_edge("intent_detection", "greeting")
         graph.add_edge("intent_detection", "classification_agent")
         graph.add_edge("intent_detection", "migration_analyzer")
+        graph.add_edge("intent_detection", "threat_analyzer")
         graph.add_edge("intent_detection", "general_llm")
         graph.add_edge("classification_agent", "animal_info") 
         graph.add_edge("animal_info", "animal_info_response")
         graph.add_edge("migration_analyzer", "migration_analyzer_response")
         graph.add_edge("migration_analyzer_response", "done_response")
+        graph.add_edge("threat_analyzer", "threat_analyzer_response")
+        graph.add_edge("threat_analyzer_response", "done_response")
         graph.add_edge("animal_info_response", "summary_llm")
         graph.add_edge("summary_llm", "response")
         graph.add_edge("general_llm", "response")
