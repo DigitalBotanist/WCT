@@ -146,6 +146,7 @@ const ChatWindow = ({
                 image: msg.image,
                 role: msg.role,
                 migrationData: msg.migrationData,
+                threatData: msg.threatData
             }));
         } catch (err: any) {
             console.log(err.message);
