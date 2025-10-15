@@ -1,5 +1,5 @@
-import AboutUs from "~/components/AboutusPage";
-import type { Route } from "./+types/aboutus";
+import type { Route } from "./+types/standardpay";
+import Standard from "~/components/PaymentPageStandard"
 
 export function meta(args: Route.MetaArgs) {
     return [
@@ -7,10 +7,10 @@ export function meta(args: Route.MetaArgs) {
         { name: "description", content: "About us details" },
     ];
 }
-export default function aboutus() {
+export default function standardpay() {
     return (
         <div className="">
-           <AboutUs/> 
+            <Standard/>
         </div>
     );
 }

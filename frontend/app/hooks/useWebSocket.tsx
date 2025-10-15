@@ -77,6 +77,9 @@ export const useWebSocket = (
                                 if (attachment.type == "migration") {
                                     data.migrationData = attachmentData;
                                 }
+                                if (attachment.type == "threat") {
+                                    data.threatData = attachmentData;
+                                }
                             } catch (error) {
                                 console.error("Error fetching attachment:", error);
                             }

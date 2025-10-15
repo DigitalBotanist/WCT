@@ -2,6 +2,7 @@ import React from "react";
 import { marked } from "marked";
 import type Message from "~/interfaces/Message";
 import logo from "~/assets/logo.svg";
+import ThreatGraph from "./ThreatGraph";
 const MigrationMap = React.lazy(() => import("~/components/MigrationMap"));
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -11,11 +12,13 @@ interface ChatMessagesProps {
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({ messages }) => {
+    const filteredMessages = messages.filter(
+        (message) => message.type == "message"
+    );
     return (
         <div className="flex-1 overflow-auto flex flex-col gap-4 w-4/5 my-3">
-            {messages
-                .filter((message) => message.type == "message")
-                .map((message) =>
+            {filteredMessages.length != 0 ? (
+                filteredMessages.map((message) =>
                     // user messages
                     message.role == "user" ? (
                         <>
@@ -48,7 +51,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ messages }) => {
                         // system messages
                         <div className="w-3/5 flex gap-2 items-start">
                             <img src={logo} alt="" className="w-8 mt-4" />
-                            <div className="w-full">
+                            <div className="w-full flex flex-col gap-5">
                                 <div
                                     className="bg-primary-800 p-5 flex-1 rounded-2xl"
                                     dangerouslySetInnerHTML={{
@@ -71,10 +74,27 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ messages }) => {
                                             title="Stopover"
                                         />
                                     )}
+                                {message.threatData && (
+                                    <ThreatGraph data={message.threatData} />
+                                )}
                             </div>
                         </div>
                     )
-                )}
+                )
+            ) : (
+                <div className="relative flex justify-center items-center h-full w-full overflow-hidden">
+                    <div className="h-3/10 flex flex-col justify-center items-center gap-5 ">
+                        <img
+                            className="w-40 hover:animate-pulse"
+                            src={logo}
+                            alt=""
+                        />
+                        <h1 className="text-3xl font-semibold text-text-400">
+                            How can I help you?
+                        </h1>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

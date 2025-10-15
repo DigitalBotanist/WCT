@@ -1,5 +1,6 @@
 import React from "react";
-import {Link} from 'react-router-dom'
+import { Link } from "react-router";
+import logo from '~/assets/logo_with_name.svg'
 
 
 function Navbar() {
@@ -8,23 +9,24 @@ function Navbar() {
       <div className="container flex flex-col sm:flex-row justify-between items-center mx-auto py-4 px-8">
         <div className="flex items-center text-2xl">
           <div className="mr-3">
-            <img src="./logo with name.svg" alt="My SVG" width={100} height={100} />
+            <img src={logo} alt="My SVG" width={200}/>
           </div>
         </div>
 
         <div className="flex mt-4 sm:mt-0 text-white">
           <Link className="px-4" to="/">Home</Link>
           <Link className="px-4" to="/pricing">Pricing</Link>
-          <Link className="px-4" to="/about-us">About us</Link>
+          <Link className="px-4" to="/aboutus">About us</Link>
         </div>
 
         <div className="hidden md:block">
-          <button
+          <Link
             type="button"
             className="py-3 px-8 text-sm bg-emerald-800 hover:bg-emerald-600 rounded text-white"
+            to="/auth"
           >
             Login
-          </button>
+          </Link>
         </div>
       </div>
     </header>

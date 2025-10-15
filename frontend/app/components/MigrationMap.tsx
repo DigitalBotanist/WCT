@@ -20,7 +20,7 @@ const colors = ["red","blue","green","purple","orange","darkcyan","brown","black
 const MigrationMap: React.FC<Props> = ({ data, title }) => {
 
   return (
-    <div style={{ width: "100%", aspectRatio: "3/2", marginBottom: "20px" }}>
+    <div style={{ width: "100%", aspectRatio: "3/2", marginBottom: "20px" }} className="flex flex-col">
       <h2 className="text-2xl font-bold text-primary-700">{title}</h2>
       {/* Legend */}
       <div style={{ display: "flex", flexWrap: "wrap", marginBottom: "10px", gap: "10px" }}>
@@ -42,7 +42,7 @@ const MigrationMap: React.FC<Props> = ({ data, title }) => {
           );
         })}
       </div>
-      <MapContainer center={[20, 20]} zoom={2} style={{ width: "100%", height: "100%", borderRadius: "15px" }}>
+      <MapContainer center={[20, 20]} zoom={2} style={{ width: "100%", height: "100%", borderRadius: "15px" }} className="flex-1">
         <TileLayer
           attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
