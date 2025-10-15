@@ -1,20 +1,20 @@
+colorlog==6.9.0
 fastapi[standard]==0.117.1
 httpx==0.28.1
+joblib==1.5.2
 numpy==2.2.6
+pandas==2.3.3
 passlib==1.7.4
 Pillow==11.3.0
 pydantic[email]==2.11.9
 python-dotenv==1.1.1
 python_jose==3.5.0
+Requests==2.32.5
+scikit_learn==1.7.2
+spacy==3.8.7
 SQLAlchemy==2.0.43
 tensorflow==2.20.0
 keras==3.10.0
 bcrypt==4.3.0
-pandas>=2.2.3,<3.0.0
-python-multipart>=0.0.18
+python-multipart==0.0.6
 psycopg2==2.9.10
-
-# Added packages compatible with Python 3.12
-scikit-learn==1.2.2
-colorlog==6.7.0
-spacy==3.5.3
