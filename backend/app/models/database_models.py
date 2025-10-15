@@ -107,3 +107,18 @@ class Attachments(Base):
             "message_id": self.message_id,
             "type": self.type
         }
+
+class TempAttachments(Base):
+    __tablename__ = 'temp_attachments'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    path = Column(String, nullable=False)
+    type = Column(String, nullable=False)
+    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "path": self.path,
+            "user_id": self.user_id,
+            "type": self.type
+        } 

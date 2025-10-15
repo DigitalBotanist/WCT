@@ -51,11 +51,16 @@ def getClusters(f):
     #del this cuz thiis sends only 5 records per year
 
     # Limit to 5 coordinates per year
-    resting_grouped['location-long'] = resting_grouped['location-long'].apply(lambda x: x[:100])
-    resting_grouped['location-lat'] = resting_grouped['location-lat'].apply(lambda x: x[:100])
+    resting_grouped['locationLong'] = resting_grouped['location-long'].apply(lambda x: x[:100])
+    resting_grouped['locationLat'] = resting_grouped['location-lat'].apply(lambda x: x[:100])
 
-    stopover_grouped['location-long'] = stopover_grouped['location-long'].apply(lambda x: x[:100])
-    stopover_grouped['location-lat'] = stopover_grouped['location-lat'].apply(lambda x: x[:100])
+    stopover_grouped['locationLong'] = stopover_grouped['location-long'].apply(lambda x: x[:100])
+    stopover_grouped['locationLat'] = stopover_grouped['location-lat'].apply(lambda x: x[:100])
+
+    resting_grouped.drop(['location-long', 'location-lat'], axis=1, inplace=True)
+    stopover_grouped.drop(['location-long', 'location-lat'], axis=1, inplace=True)
+
+    print(f" 'locationLong' column: {resting_grouped.describe}")
 
     # Convert numpy types in DataFrames to Python types
     def convert_df(df):
