@@ -1,4 +1,4 @@
-# 🦁 Wildlife Threat Controller
+# 🦁 Wildlife Conservation Tracker
 
 > **Empowering people and technology to protect wildlife through knowledge, data, and intelligent insights.**  
 > A future where every species thrives — guided by awareness, collaboration, and AI-driven conservation.
@@ -7,7 +7,7 @@
 
 ## 🌿 Overview
 
-**Wildlife Threat Controller (WTC)** is an **Agentic AI system** designed to understand, analyze, and protect wildlife.  
+**Wildlife Conservation Tracker** is an **Agentic AI system** designed to understand, analyze, and protect wildlife.  
 It is built to help researchers, conservationists, and policy makers:
 
 - Identify wildlife species from images 🐾  
