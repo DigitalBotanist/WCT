@@ -353,6 +353,7 @@ async def websocket_endpoint(
     try:
         while True:
             logging.info(f"socket listenting....")
+
             data = await websocket.receive_json()
             logging.info(f"got socket message")
             logging.info(f"socket sessionid: {data.get('sessionId')}")
@@ -396,8 +397,9 @@ async def websocket_endpoint(
                     }) 
                 websocket.state.session_id = session_id
                 continue
-            try: 
-                session_id =  data.get("sessionId") or websocket.state.get("session_id") 
+            try:
+                if not session_id:  
+                    session_id =  data.get("sessionId") or websocket.state.get("session_id") 
             except err: 
                 await websocket.send_json({
                         "type": "error",
