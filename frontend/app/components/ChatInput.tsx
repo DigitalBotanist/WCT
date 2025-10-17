@@ -104,7 +104,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
     return (
         <form
-            className="relative flex gap-2 w-19/20 mb-4"
+            className="relative flex gap-2 w-19/20 mb-1"
             onSubmit={handleSend}
         >
             {/* Hidden file input */}
