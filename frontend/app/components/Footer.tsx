@@ -38,7 +38,7 @@ export default function Footer(){
                 </div>
                 
             </div>
-            <hr className="w-500 mx-auto border-t-2 border-white"></hr>
+            <hr className="w-full mx-auto border-t-2 border-white"></hr>
             <p className="text-s pt-5 ps-10 pb-5 text-gray-600">© 2025 Wildlife AI — Empowering Discovery Through Intelligent Wildlife Recognitionx</p>
         </footer>
     )

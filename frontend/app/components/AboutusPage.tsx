@@ -1,6 +1,9 @@
+import Navbar from "./Navbar";
+
 const AboutUs = () => {
   return (
     <div className="font-[Segoe_UI] text-white bg-[#0e1b2c] m-0 p-0 box-border">
+      <Navbar />
       <section className="bg-[#16293a] bg-[url('../app/assets/wildlifeimg.jpg')] bg-no-repeat bg-cover py-16 px-10 flex flex-wrap items-center justify-between gap-8 max-md:flex-col max-md:text-center max-md:py-12 max-md:px-6">
         <div className="about-text">
           <h1 className="text-[#2bb89d] text-[5rem] font-semibold mb-4 transition-colors duration-300 hover:text-[#3ed1b3]">

@@ -307,7 +307,7 @@ const ChatWindow = ({
     }, [sessionId.current]);
 
     return (
-        <div className="w-full h-full flex items-center">
+        <div className="w-full h-full flex items-center bg-background-800">
             {/* animal card */}
             {animal && (
                 <AnimalCard
