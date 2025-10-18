@@ -303,6 +303,7 @@ async def websocket_endpoint(
 
         if (not data): 
             await websocket.send_json(message)
+            return
 
         filename = input_formatter.process_migration_data(data=data) 
 

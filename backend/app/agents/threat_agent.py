@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import List, Dict
 import requests
 import json
+import logging
 import re
 
 from app.models.agent import Agent
@@ -14,13 +15,45 @@ class ThreatAgent(Agent):
         self.gemini_key = gemini_key
 
     async def process(self, task, history = None):
-        animal_name = task.get("name")
-        print("animal name", animal_name)
-        details = self._get_animal_detail(animal_name)
-        population = self._get_animal_threat_details(animal_name)
-        print(population)
-        result = Result(success=True, content=(details), data=population)        
-        return result
+        # animal_name = task.get("name")
+        # print("animal name", animal_name)
+        # details = self._get_animal_detail(animal_name)
+        # population = self._get_animal_threat_details(animal_name)
+        # print(population)
+        # result = Result(success=True, content=(details), data=population)        
+        # return result
+        try:
+            # Extract animal name from task
+            animal_name = task.get("name")
+            if not animal_name:
+                raise ValueError("Animal name is missing in the task.")
+            
+            logging.debug(f"Threat Animal name: {animal_name}")
+            
+            # Get animal details
+            details = self._get_animal_detail(animal_name)
+            if not details:
+                raise ValueError(f"No details found for animal: {animal_name}")
+
+            # Get population and threat details
+            population = self._get_animal_threat_details(animal_name)
+            if not population:
+                raise ValueError(f"No threat data found for animal: {animal_name}")
+
+            # Return result if everything is successful
+            result = Result(success=True, content=details, data=population)
+            return result
+
+        except ValueError as ve:
+            logging.error(f"Value Error: {ve}")
+            # Handle specific error, like missing name or missing details
+            return Result(success=False, content=str(ve), data=None)
+        
+        except Exception as e:
+            logging.error(f"Unexpected Error: {e}")
+            # Catch other unexpected errors and log them
+            return Result(success=False, content="An unexpected error occurred", data=None)
+    
 
     def _search_serper(self, animal:str):
         url="https://google.serper.dev/search"
