@@ -8,7 +8,7 @@ const AnimalProperty = ({
     isFlexOne?: boolean;
 }) => {
     return (
-        <div className={`${isFlexOne && 'flex-1' } flex flex-col items-center bg-background-400 p-2 rounded-lg`}>
+        <div className={`${isFlexOne ? 'flex-1' : ''} flex flex-col items-center bg-background-400 p-2 rounded-lg overflow-auto`}>
             <h4 className="font-bold">{title}</h4>
             <p>{property}</p>
         </div>
