@@ -8,6 +8,7 @@ from app.agents.migration_analyzer_agent import MigrationAnalyzerAgent
 from app.agents.threat_agent import ThreatAgent
 from app.agents.threat_agent import ThreatAgent
 from app.agents.gemini_agent import GeminiLLM
+from app.agents.gemini_agent_4 import GeminiLLM4
 from app.agents.gemini_agent_2 import GeminiLLM2
 from app.models.agent import Agent
 from app.models.graph import NodeType, Node, GraphState, Result
@@ -439,6 +440,7 @@ class Orchestrator:
             # General LLM agent
             agents["general_llm_agent"] =  GeminiLLM()
             agents["general_llm_agent_2"] =  GeminiLLM2()
+            agents["general_llm_agent_4"] =  GeminiLLM4()
             agents["migration_analyzer_agent"] = MigrationAnalyzerAgent(
                 url=MIGRATION_API_URL
             )
@@ -541,7 +543,7 @@ class Orchestrator:
         general_llm_node = Node(
             node_id="general_llm",
             type=NodeType.AGENT,
-            agent_name="general_llm_agent_2", 
+            agent_name="general_llm_agent_4", 
             task_template="""
             context: {context}
             user request: {user_input}
