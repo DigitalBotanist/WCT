@@ -307,7 +307,7 @@ const ChatWindow = ({
     }, [sessionId.current]);
 
     return (
-        <div className="w-full h-full flex items-center">
+        <div className="w-full h-full flex items-center bg-background-800">
             {/* animal card */}
             {animal && (
                 <AnimalCard
@@ -332,6 +332,7 @@ const ChatWindow = ({
                     setMessage={setMessage}
                     setImageBase64={setImageBase64}
                 />
+                <p className="text-xs mb-2 text-text-700">This Chatbot is powered by AI and may not be always be accurate</p>
             </div>
         </div>
     );
